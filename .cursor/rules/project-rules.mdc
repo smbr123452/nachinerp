@@ -1,0 +1,15 @@
+---
+description: Project rules
+alwaysApply: true
+---
+
+This is an internal ERP system.
+
+Rules:
+- Always plan before coding
+- Use TypeScript
+- Use PostgreSQL with Prisma
+- Keep code clean and modular
+- Use Mongolian language in UI
+- Add audit log for important actions
+- Do not break existing code

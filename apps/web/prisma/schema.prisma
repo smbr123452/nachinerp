@@ -1,0 +1,708 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum ProductType {
+  RAW_MATERIAL
+  FINISHED_PRODUCT
+}
+
+enum StockTxnType {
+  RECEIVING_IN
+  TRANSFER_OUT
+  TRANSFER_IN
+  ADJUSTMENT_IN
+  ADJUSTMENT_OUT
+  PRODUCTION_CONSUME
+  PRODUCTION_OUTPUT
+  POS_SALE_OUT
+  ROUTE_LOAD_OUT
+  ROUTE_RETURN_IN
+}
+
+enum StockTransferStatus {
+  DRAFT
+  APPROVED
+  RECEIVED
+}
+
+enum StockCountStatus {
+  DRAFT
+  SUBMITTED
+  APPROVED
+}
+
+enum StockAdjustmentStatus {
+  PENDING_APPROVAL
+  APPROVED
+}
+
+enum ProductionOrderStatus {
+  DRAFT
+  APPROVED
+  EXECUTED
+}
+
+enum DeliveryRunStatus {
+  DRAFT
+  LOADED
+  IN_PROGRESS
+  CLOSED
+}
+
+enum UserRoleScopeType {
+  GLOBAL
+  BRANCH
+  WAREHOUSE
+}
+
+model User {
+  id           String     @id @default(cuid())
+  username     String     @unique
+  passwordHash String
+  fullName     String
+  isActive     Boolean    @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  roles    UserRole[]
+  sessions Session[]
+  audit    AuditLog[] @relation("AuditActor")
+  stockReceivings StockReceivingHeader[] @relation("StockReceivingCreatedBy")
+  requestedTransfers StockTransferHeader[] @relation("TransferRequestedBy")
+  approvedTransfers StockTransferHeader[] @relation("TransferApprovedBy")
+  receivedTransfers StockTransferHeader[] @relation("TransferReceivedBy")
+  stockLedgers StockLedger[] @relation("StockLedgerCreatedBy")
+  createdStockCounts StockCountHeader[] @relation("StockCountCreatedBy")
+  approvedStockCounts StockCountHeader[] @relation("StockCountApprovedBy")
+  createdStockAdjustments StockAdjustmentHeader[] @relation("StockAdjustmentCreatedBy")
+  approvedStockAdjustments StockAdjustmentHeader[] @relation("StockAdjustmentApprovedBy")
+  createdRecipes Recipe[] @relation("RecipeCreatedBy")
+  createdProductionOrders ProductionOrder[] @relation("ProductionOrderCreatedBy")
+  approvedProductionOrders ProductionOrder[] @relation("ProductionOrderApprovedBy")
+  executedProductionOrders ProductionOrder[] @relation("ProductionOrderExecutedBy")
+  posImportBatches PosImportBatch[]
+  createdDeliveryRuns DeliveryRun[] @relation("DeliveryRunCreatedBy")
+  closedDeliveryRuns DeliveryRun[] @relation("DeliveryRunClosedBy")
+  deliveryConfirmations DeliveryConfirmation[] @relation("DeliveryConfirmedBy")
+
+  @@index([isActive])
+}
+
+model Role {
+  id          String @id @default(cuid())
+  code        String @unique
+  nameMn      String
+  description String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  users       UserRole[]
+  permissions RolePermission[]
+}
+
+model Permission {
+  id          String @id @default(cuid())
+  code        String @unique
+  module      String
+  action      String
+  description String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  roles RolePermission[]
+}
+
+model RolePermission {
+  id           String @id @default(cuid())
+  roleId       String
+  permissionId String
+
+  role       Role       @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  permission Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+
+  @@unique([roleId, permissionId])
+  @@index([permissionId])
+}
+
+model UserRole {
+  id        String            @id @default(cuid())
+  userId    String
+  roleId    String
+  scopeType UserRoleScopeType @default(GLOBAL)
+  scopeId   String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role Role @relation(fields: [roleId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+
+  @@index([roleId])
+  @@index([scopeType, scopeId])
+}
+
+model Session {
+  id        String   @id @default(cuid())
+  token     String   @unique
+  userId    String
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([expiresAt])
+}
+
+model AuditLog {
+  id         String   @id @default(cuid())
+  actorUserId String?
+
+  module     String
+  action     String
+  entityType String
+  entityId   String?
+
+  beforeData Json?
+  afterData  Json?
+
+  ipAddress String?
+  userAgent String?
+
+  createdAt DateTime @default(now())
+
+  actor User? @relation("AuditActor", fields: [actorUserId], references: [id], onDelete: SetNull)
+
+  @@index([createdAt])
+  @@index([module, action])
+  @@index([entityType, entityId])
+}
+
+model Branch {
+  id       String  @id @default(cuid())
+  code     String  @unique
+  nameMn   String
+  address  String?
+  phone    String?
+  isActive Boolean @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  warehouses Warehouse[]
+  balances StockBalance[]
+  ledgerEntries StockLedger[]
+  posBranchMappings PosBranchMapping[]
+  posSales PosSale[]
+  posSaleItems PosSaleItem[]
+  routeStops DeliveryRouteStop[]
+  deliveryConfirmations DeliveryConfirmation[]
+
+  @@index([isActive])
+}
+
+model Warehouse {
+  id       String  @id @default(cuid())
+  branchId String
+  code     String
+  nameMn   String
+  isActive Boolean @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  branch Branch @relation(fields: [branchId], references: [id], onDelete: Restrict)
+  balances StockBalance[]
+  receivingHeaders StockReceivingHeader[]
+  transferFromHeaders StockTransferHeader[] @relation("TransferFromWarehouse")
+  transferToHeaders StockTransferHeader[] @relation("TransferToWarehouse")
+  ledgerEntries StockLedger[]
+  stockCounts StockCountHeader[]
+  stockAdjustments StockAdjustmentHeader[]
+  productionSourceOrders ProductionOrder[] @relation("ProductionSourceWarehouse")
+  productionOutputOrders ProductionOrder[] @relation("ProductionOutputWarehouse")
+  posBranchMappings PosBranchMapping[]
+  deliveryRoutes DeliveryRoute[]
+
+  @@unique([branchId, code])
+  @@index([isActive])
+}
+
+model Product {
+  balances StockBalance[]
+  receivingItems StockReceivingItem[]
+  transferItems StockTransferItem[]
+  ledgerEntries StockLedger[]
+  stockCountItems StockCountItem[]
+  stockAdjustmentItems StockAdjustmentItem[]
+  recipes Recipe[] @relation("RecipeFinishedProduct")
+  recipeMaterials RecipeItem[] @relation("RecipeMaterialProduct")
+  productionOrders ProductionOrder[] @relation("ProductionOrderFinishedProduct")
+  posProductMappings PosProductMapping[]
+  posProductNameMappings PosProductNameMapping[]
+  posSaleItems PosSaleItem[]
+  deliveryRunItems DeliveryRunItem[]
+  deliveryItems DeliveryConfirmationItem[]
+  id       String      @id @default(cuid())
+  sku      String      @unique
+  barcode  String?     @unique
+  nameMn   String
+  type     ProductType
+  isActive Boolean     @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([type])
+  @@index([isActive])
+}
+
+model DeliveryRoute {
+  id                String   @id @default(cuid())
+  code              String   @unique
+  nameMn            String
+  sourceWarehouseId String
+  isActive          Boolean  @default(true)
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  sourceWarehouse Warehouse @relation(fields: [sourceWarehouseId], references: [id], onDelete: Restrict)
+  stops          DeliveryRouteStop[]
+  runs           DeliveryRun[]
+
+  @@index([isActive])
+}
+
+model DeliveryRouteStop {
+  id       String @id @default(cuid())
+  routeId  String
+  branchId String
+  stopOrder Int
+
+  route  DeliveryRoute @relation(fields: [routeId], references: [id], onDelete: Cascade)
+  branch Branch        @relation(fields: [branchId], references: [id], onDelete: Restrict)
+
+  @@unique([routeId, branchId])
+  @@index([routeId, stopOrder])
+}
+
+model DeliveryRun {
+  id           String            @id @default(cuid())
+  runNo        String            @unique
+  routeId      String
+  runDate      DateTime
+  status       DeliveryRunStatus @default(DRAFT)
+  note         String?
+  createdById  String
+  closedById   String?
+  loadedAt     DateTime?
+  closedAt     DateTime?
+  createdAt    DateTime          @default(now())
+  updatedAt    DateTime          @updatedAt
+
+  route      DeliveryRoute @relation(fields: [routeId], references: [id], onDelete: Restrict)
+  createdBy  User          @relation("DeliveryRunCreatedBy", fields: [createdById], references: [id], onDelete: Restrict)
+  closedBy   User?         @relation("DeliveryRunClosedBy", fields: [closedById], references: [id], onDelete: SetNull)
+  items      DeliveryRunItem[]
+  deliveries DeliveryConfirmation[]
+
+  @@index([status, runDate])
+}
+
+model DeliveryRunItem {
+  id          String  @id @default(cuid())
+  runId       String
+  productId   String
+  loadedQty   Decimal @default(0) @db.Decimal(18, 3)
+  deliveredQty Decimal @default(0) @db.Decimal(18, 3)
+  returnedQty Decimal @default(0) @db.Decimal(18, 3)
+  lossQty     Decimal @default(0) @db.Decimal(18, 3)
+
+  run     DeliveryRun @relation(fields: [runId], references: [id], onDelete: Cascade)
+  product Product     @relation(fields: [productId], references: [id], onDelete: Restrict)
+
+  @@unique([runId, productId])
+  @@index([productId])
+}
+
+model DeliveryConfirmation {
+  id            String   @id @default(cuid())
+  runId         String
+  branchId      String
+  confirmedAt   DateTime @default(now())
+  confirmedById String
+  note          String?
+
+  run         DeliveryRun @relation(fields: [runId], references: [id], onDelete: Cascade)
+  branch      Branch      @relation(fields: [branchId], references: [id], onDelete: Restrict)
+  confirmedBy User        @relation("DeliveryConfirmedBy", fields: [confirmedById], references: [id], onDelete: Restrict)
+  items       DeliveryConfirmationItem[]
+
+  @@index([runId, confirmedAt])
+}
+
+model DeliveryConfirmationItem {
+  id              String  @id @default(cuid())
+  confirmationId  String
+  productId       String
+  qty             Decimal @db.Decimal(18, 3)
+
+  confirmation DeliveryConfirmation @relation(fields: [confirmationId], references: [id], onDelete: Cascade)
+  product      Product              @relation(fields: [productId], references: [id], onDelete: Restrict)
+
+  @@index([confirmationId])
+  @@index([productId])
+}
+
+model PosBranchMapping {
+  id            String   @id @default(cuid())
+  posBranchName String   @unique
+  branchId      String
+  warehouseId   String
+  isActive      Boolean  @default(true)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  branch    Branch    @relation(fields: [branchId], references: [id], onDelete: Restrict)
+  warehouse Warehouse @relation(fields: [warehouseId], references: [id], onDelete: Restrict)
+}
+
+model PosProductMapping {
+  id          String   @id @default(cuid())
+  productCode String   @unique
+  productId   String
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  product Product @relation(fields: [productId], references: [id], onDelete: Restrict)
+}
+
+model PosProductNameMapping {
+  id          String   @id @default(cuid())
+  productName String   @unique
+  productId   String
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  product Product @relation(fields: [productId], references: [id], onDelete: Restrict)
+}
+
+model PosImportBatch {
+  id             String   @id @default(cuid())
+  importNo       String   @unique
+  originalFileName String
+  totalRows      Int
+  skippedCancelledRows Int @default(0)
+  duplicateRows  Int @default(0)
+  importedRows   Int @default(0)
+  failedRows     Int @default(0)
+  status         String
+  note           String?
+  createdById    String
+  createdAt      DateTime @default(now())
+
+  createdBy User @relation(fields: [createdById], references: [id], onDelete: Restrict)
+  sales PosSale[]
+}
+
+model PosSale {
+  id              String   @id @default(cuid())
+  importBatchId   String
+  branchId        String
+  receiptNo       String
+  saleDate        DateTime
+  saleTime        String?
+  receiptSequence Int
+  cashierName     String?
+  orderType       String?
+  createdAt       DateTime @default(now())
+
+  importBatch PosImportBatch @relation(fields: [importBatchId], references: [id], onDelete: Cascade)
+  branch      Branch         @relation(fields: [branchId], references: [id], onDelete: Restrict)
+  items       PosSaleItem[]
+
+  @@index([branchId, saleDate])
+}
+
+model PosSaleItem {
+  id               String   @id @default(cuid())
+  posSaleId        String
+  branchId         String
+  saleDate         DateTime
+  receiptSequence  Int
+  lineSequence     Int
+  productId        String
+  productCode      String?
+  productName      String
+  barcode          String?
+  unitPrice        Decimal  @db.Decimal(18, 3)
+  quantity         Decimal  @db.Decimal(18, 3)
+  lineTotal        Decimal  @db.Decimal(18, 3)
+  productGroup     String?
+  productCategory  String?
+  createdAt        DateTime @default(now())
+
+  posSale  PosSale  @relation(fields: [posSaleId], references: [id], onDelete: Cascade)
+  branch   Branch   @relation(fields: [branchId], references: [id], onDelete: Restrict)
+  product  Product  @relation(fields: [productId], references: [id], onDelete: Restrict)
+
+  @@unique([branchId, saleDate, receiptSequence, lineSequence])
+  @@index([posSaleId])
+}
+
+model Recipe {
+  id                 String   @id @default(cuid())
+  code               String   @unique
+  nameMn             String
+  finishedProductId  String
+  isActive           Boolean  @default(true)
+  createdById        String
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  finishedProduct Product    @relation("RecipeFinishedProduct", fields: [finishedProductId], references: [id], onDelete: Restrict)
+  createdBy       User       @relation("RecipeCreatedBy", fields: [createdById], references: [id], onDelete: Restrict)
+  items           RecipeItem[]
+  productionOrders ProductionOrder[]
+
+  @@index([isActive])
+}
+
+model RecipeItem {
+  id                String  @id @default(cuid())
+  recipeId          String
+  materialProductId String
+  qtyPerUnit        Decimal @db.Decimal(18, 3)
+
+  recipe          Recipe  @relation(fields: [recipeId], references: [id], onDelete: Cascade)
+  materialProduct Product @relation("RecipeMaterialProduct", fields: [materialProductId], references: [id], onDelete: Restrict)
+
+  @@unique([recipeId, materialProductId])
+  @@index([materialProductId])
+}
+
+model ProductionOrder {
+  id                String                @id @default(cuid())
+  orderNo           String                @unique
+  recipeId          String
+  finishedProductId String
+  sourceWarehouseId String
+  outputWarehouseId String
+  plannedQty        Decimal               @db.Decimal(18, 3)
+  status            ProductionOrderStatus @default(DRAFT)
+  note              String?
+  createdById       String
+  approvedById      String?
+  executedById      String?
+  approvedAt        DateTime?
+  executedAt        DateTime?
+  createdAt         DateTime              @default(now())
+  updatedAt         DateTime              @updatedAt
+
+  recipe          Recipe    @relation(fields: [recipeId], references: [id], onDelete: Restrict)
+  finishedProduct Product   @relation("ProductionOrderFinishedProduct", fields: [finishedProductId], references: [id], onDelete: Restrict)
+  sourceWarehouse Warehouse @relation("ProductionSourceWarehouse", fields: [sourceWarehouseId], references: [id], onDelete: Restrict)
+  outputWarehouse Warehouse @relation("ProductionOutputWarehouse", fields: [outputWarehouseId], references: [id], onDelete: Restrict)
+  createdBy       User      @relation("ProductionOrderCreatedBy", fields: [createdById], references: [id], onDelete: Restrict)
+  approvedBy      User?     @relation("ProductionOrderApprovedBy", fields: [approvedById], references: [id], onDelete: SetNull)
+  executedBy      User?     @relation("ProductionOrderExecutedBy", fields: [executedById], references: [id], onDelete: SetNull)
+
+  @@index([status, createdAt])
+}
+
+model StockReceivingHeader {
+  id          String   @id @default(cuid())
+  receiveNo   String   @unique
+  warehouseId String
+  note        String?
+  receivedAt  DateTime @default(now())
+  createdById String
+  createdAt   DateTime @default(now())
+
+  warehouse Warehouse @relation(fields: [warehouseId], references: [id], onDelete: Restrict)
+  createdBy User      @relation("StockReceivingCreatedBy", fields: [createdById], references: [id], onDelete: Restrict)
+  items     StockReceivingItem[]
+
+  @@index([warehouseId, receivedAt])
+}
+
+model StockReceivingItem {
+  id          String  @id @default(cuid())
+  receivingId String
+  productId   String
+  qty         Decimal @db.Decimal(18, 3)
+
+  receiving StockReceivingHeader @relation(fields: [receivingId], references: [id], onDelete: Cascade)
+  product   Product              @relation(fields: [productId], references: [id], onDelete: Restrict)
+
+  @@index([receivingId])
+  @@index([productId])
+}
+
+model StockTransferHeader {
+  id              String              @id @default(cuid())
+  transferNo      String              @unique
+  fromWarehouseId String
+  toWarehouseId   String
+  note            String?
+  status          StockTransferStatus @default(DRAFT)
+  requestedById   String
+  approvedById    String?
+  receivedById    String?
+  requestedAt     DateTime            @default(now())
+  approvedAt      DateTime?
+  receivedAt      DateTime?
+  createdAt       DateTime            @default(now())
+
+  fromWarehouse Warehouse @relation("TransferFromWarehouse", fields: [fromWarehouseId], references: [id], onDelete: Restrict)
+  toWarehouse   Warehouse @relation("TransferToWarehouse", fields: [toWarehouseId], references: [id], onDelete: Restrict)
+  requestedBy   User      @relation("TransferRequestedBy", fields: [requestedById], references: [id], onDelete: Restrict)
+  approvedBy    User?     @relation("TransferApprovedBy", fields: [approvedById], references: [id], onDelete: SetNull)
+  receivedBy    User?     @relation("TransferReceivedBy", fields: [receivedById], references: [id], onDelete: SetNull)
+  items         StockTransferItem[]
+
+  @@index([status, requestedAt])
+  @@index([fromWarehouseId])
+  @@index([toWarehouseId])
+}
+
+model StockTransferItem {
+  id         String  @id @default(cuid())
+  transferId String
+  productId  String
+  qty        Decimal @db.Decimal(18, 3)
+
+  transfer StockTransferHeader @relation(fields: [transferId], references: [id], onDelete: Cascade)
+  product  Product             @relation(fields: [productId], references: [id], onDelete: Restrict)
+
+  @@index([transferId])
+  @@index([productId])
+}
+
+model StockLedger {
+  id               String      @id @default(cuid())
+  txnType          StockTxnType
+  warehouseId      String
+  branchId         String
+  productId        String
+  qtyIn            Decimal     @default(0) @db.Decimal(18, 3)
+  qtyOut           Decimal     @default(0) @db.Decimal(18, 3)
+  refType          String
+  refId            String
+  note             String?
+  occurredAt       DateTime    @default(now())
+  createdById      String
+  createdAt        DateTime    @default(now())
+
+  warehouse Warehouse @relation(fields: [warehouseId], references: [id], onDelete: Restrict)
+  product   Product   @relation(fields: [productId], references: [id], onDelete: Restrict)
+  branch    Branch    @relation(fields: [branchId], references: [id], onDelete: Restrict)
+  createdBy User      @relation("StockLedgerCreatedBy", fields: [createdById], references: [id], onDelete: Restrict)
+
+  @@index([warehouseId, productId, occurredAt])
+  @@index([branchId, productId, occurredAt])
+  @@index([refType, refId])
+}
+
+model StockBalance {
+  id          String   @id @default(cuid())
+  warehouseId String
+  branchId    String
+  productId   String
+  qty         Decimal  @default(0) @db.Decimal(18, 3)
+  updatedAt   DateTime @updatedAt
+
+  warehouse Warehouse @relation(fields: [warehouseId], references: [id], onDelete: Restrict)
+  product   Product   @relation(fields: [productId], references: [id], onDelete: Restrict)
+  branch    Branch    @relation(fields: [branchId], references: [id], onDelete: Restrict)
+
+  @@unique([warehouseId, productId])
+  @@index([branchId, productId])
+}
+
+model StockCountHeader {
+  id           String           @id @default(cuid())
+  countNo      String           @unique
+  warehouseId  String
+  status       StockCountStatus @default(DRAFT)
+  note         String?
+  submittedAt  DateTime?
+  approvedAt   DateTime?
+  createdById  String
+  approvedById String?
+  createdAt    DateTime         @default(now())
+  updatedAt    DateTime         @updatedAt
+
+  warehouse Warehouse @relation(fields: [warehouseId], references: [id], onDelete: Restrict)
+  createdBy User      @relation("StockCountCreatedBy", fields: [createdById], references: [id], onDelete: Restrict)
+  approvedBy User?    @relation("StockCountApprovedBy", fields: [approvedById], references: [id], onDelete: SetNull)
+  items     StockCountItem[]
+  adjustments StockAdjustmentHeader[]
+
+  @@index([warehouseId, status])
+}
+
+model StockCountItem {
+  id          String  @id @default(cuid())
+  stockCountId String
+  productId   String
+  countedQty  Decimal @db.Decimal(18, 3)
+  systemQty   Decimal @default(0) @db.Decimal(18, 3)
+  varianceQty Decimal @default(0) @db.Decimal(18, 3)
+
+  stockCount StockCountHeader @relation(fields: [stockCountId], references: [id], onDelete: Cascade)
+  product    Product          @relation(fields: [productId], references: [id], onDelete: Restrict)
+
+  @@unique([stockCountId, productId])
+  @@index([productId])
+}
+
+model StockAdjustmentHeader {
+  id            String                @id @default(cuid())
+  adjustmentNo  String                @unique
+  warehouseId   String
+  stockCountId  String?
+  status        StockAdjustmentStatus @default(PENDING_APPROVAL)
+  note          String?
+  createdById   String
+  approvedById  String?
+  approvedAt    DateTime?
+  createdAt     DateTime              @default(now())
+  updatedAt     DateTime              @updatedAt
+
+  warehouse  Warehouse        @relation(fields: [warehouseId], references: [id], onDelete: Restrict)
+  stockCount StockCountHeader? @relation(fields: [stockCountId], references: [id], onDelete: SetNull)
+  createdBy  User             @relation("StockAdjustmentCreatedBy", fields: [createdById], references: [id], onDelete: Restrict)
+  approvedBy User?            @relation("StockAdjustmentApprovedBy", fields: [approvedById], references: [id], onDelete: SetNull)
+  items      StockAdjustmentItem[]
+
+  @@index([warehouseId, status])
+}
+
+model StockAdjustmentItem {
+  id               String  @id @default(cuid())
+  stockAdjustmentId String
+  productId        String
+  systemQty        Decimal @db.Decimal(18, 3)
+  countedQty       Decimal @db.Decimal(18, 3)
+  varianceQty      Decimal @db.Decimal(18, 3)
+
+  stockAdjustment StockAdjustmentHeader @relation(fields: [stockAdjustmentId], references: [id], onDelete: Cascade)
+  product         Product               @relation(fields: [productId], references: [id], onDelete: Restrict)
+
+  @@index([stockAdjustmentId])
+  @@index([productId])
+}
+

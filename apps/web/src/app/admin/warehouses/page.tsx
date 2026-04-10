@@ -1,0 +1,23 @@
+import { redirect } from "next/navigation";
+import { getCurrentAuthContext, hasPermission } from "@/core/auth/rbac";
+import WarehousesClient from "./WarehousesClient";
+
+export default async function WarehousesPage() {
+  const auth = await getCurrentAuthContext();
+  if (!auth) redirect("/login");
+
+  const canRead = hasPermission(auth, "admin.masterdata.read");
+  const canWrite = hasPermission(auth, "admin.masterdata.write");
+
+  if (!canRead) {
+    return (
+      <div className="rounded border bg-white p-5">
+        <h1 className="text-lg font-semibold">Хандах эрхгүй</h1>
+        <p className="mt-1 text-sm text-neutral-600">Складын модуль харах эрх танд алга.</p>
+      </div>
+    );
+  }
+
+  return <WarehousesClient canWrite={canWrite} />;
+}
+
