@@ -11,7 +11,7 @@ import { MOVEMENT_TYPE_LABEL } from "@/lib/movements";
 import { prisma } from "@/lib/prisma";
 import { unitLabel } from "@/lib/units";
 import { calculateRecipeCost } from "@/server/services/recipes";
-import { PRODUCT_TYPE_LABEL } from "../ProductsClient";
+import { PRODUCT_TYPE_LABEL } from "@/lib/products";
 import { RecipeEditor, type MaterialOption, type RecipeRow } from "./RecipeEditor";
 
 type Params = Promise<{ id: string }>;

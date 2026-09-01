@@ -7,10 +7,10 @@ import { Button, SubmitButton } from "@/components/ui/Button";
 import { Checkbox, Field, Input, Select } from "@/components/ui/Field";
 import { Modal, ModalActions } from "@/components/ui/Modal";
 import { IDLE, type ActionState } from "@/lib/action-state";
+import type { ProductType } from "@prisma/client";
 import { ALL_UNITS, unitLabel } from "@/lib/units";
+import { PRODUCT_TYPE_LABEL, PRODUCT_TYPES } from "@/lib/products";
 import { createProductAction, updateProductAction } from "./actions";
-
-export type ProductType = "MANUFACTURED" | "RESALE";
 
 export type ProductFormValues = {
   id: string;
@@ -26,11 +26,6 @@ export type ProductFormValues = {
   hasStock: boolean;
   /** Жортой эсэх — RESALE руу шилжихийг хаана. */
   hasRecipe: boolean;
-};
-
-export const PRODUCT_TYPE_LABEL: Record<ProductType, string> = {
-  MANUFACTURED: "Үйлдвэрлэдэг",
-  RESALE: "Худалдан авч борлуулдаг",
 };
 
 type Category = { id: string; name: string };
@@ -93,7 +88,7 @@ function ProductForm({
               setProductType(event.target.value as ProductType)
             }
           >
-            {(Object.keys(PRODUCT_TYPE_LABEL) as ProductType[]).map((type) => (
+            {PRODUCT_TYPES.map((type) => (
               <option key={type} value={type}>
                 {PRODUCT_TYPE_LABEL[type]}
               </option>

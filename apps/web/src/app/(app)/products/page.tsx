@@ -14,7 +14,8 @@ import { CategoryManagerButton } from "@/components/categories/CategoryManager";
 import { listCategories } from "@/server/services/categories";
 import { DeleteRecordButton } from "@/components/ui/DeleteRecordButton";
 import { getUsedProductIds } from "@/server/services/master-data";
-import { EditProductButton, NewProductButton, PRODUCT_TYPE_LABEL } from "./ProductsClient";
+import { PRODUCT_TYPE_LABEL } from "@/lib/products";
+import { EditProductButton, NewProductButton } from "./ProductsClient";
 import { deleteProductAction } from "./actions";
 
 export const metadata = { title: "Бүтээгдэхүүн | Начин ERP" };
