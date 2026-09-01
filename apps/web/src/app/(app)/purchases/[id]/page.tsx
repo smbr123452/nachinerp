@@ -2,7 +2,7 @@ import { notFound } from "next/navigation";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { StatusBadge } from "@/components/ui/Badge";
 import { Alert } from "@/components/ui/Alert";
-import { Card, CardHeader } from "@/components/ui/Card";
+import { Card, CardBody, CardHeader } from "@/components/ui/Card";
 import { CancelDocumentButton } from "@/components/ui/ConfirmAction";
 import { Table, TableLink, Td, Th, TotalRow, Tr } from "@/components/ui/Table";
 import { requirePageUser } from "@/lib/auth/guards";
@@ -12,12 +12,14 @@ import { unitLabel } from "@/lib/units";
 import { subjectDisplay } from "@/lib/stock-subject";
 import { MOVEMENT_TYPE_LABEL } from "@/lib/movements";
 import { PURCHASE_PAYMENT_LABEL } from "@/server/services/purchases";
+import { listPurchaseAttachments } from "@/server/services/attachments";
+import { PurchaseAttachments } from "./Attachments";
 import { cancelPurchaseAction } from "../actions";
 
 type Params = Promise<{ id: string }>;
 
 export default async function PurchaseDetailPage({ params }: { params: Params }) {
-  await requirePageUser();
+  const user = await requirePageUser();
   const { id } = await params;
 
   const purchase = await prisma.purchase.findUnique({
@@ -29,6 +31,8 @@ export default async function PurchaseDetailPage({ params }: { params: Params })
     },
   });
   if (!purchase) notFound();
+
+  const attachments = await listPurchaseAttachments(purchase.id);
 
   const movements = await prisma.inventoryMovement.findMany({
     where: { referenceId: purchase.id, referenceType: { in: ["PURCHASE", "PURCHASE_CANCEL"] } },
@@ -119,6 +123,20 @@ export default async function PurchaseDetailPage({ params }: { params: Params })
             </TotalRow>
           </tbody>
         </Table>
+      </Card>
+
+      <Card className="mb-6">
+        <CardHeader
+          title="Баримт / нэхэмжлэх"
+          description="Зураг эсвэл PDF хавсаргана. Зөвхөн нэвтэрсэн хэрэглэгч үзнэ."
+        />
+        <CardBody>
+          <PurchaseAttachments
+            purchaseId={purchase.id}
+            attachments={attachments}
+            canDelete={user.role === "OWNER"}
+          />
+        </CardBody>
       </Card>
 
       <Card>
