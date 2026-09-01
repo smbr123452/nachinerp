@@ -14,7 +14,7 @@ export function Tabs({
   className?: string;
 }) {
   return (
-    <div className={cn("no-print mb-4 border-b border-ink-200", className)}>
+    <div className={cn("no-print mb-4 min-w-0 max-w-full border-b border-ink-200", className)}>
       <nav className="scrollbar-slim -mb-px flex gap-1 overflow-x-auto" aria-label="Хэсгүүд">
         {items.map((item) => {
           const isActive = item.key === active;
