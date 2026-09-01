@@ -6,7 +6,7 @@ import { requireOperator } from "@/lib/auth/guards";
 import { getClientIp } from "@/lib/auth/session";
 import { prisma } from "@/lib/prisma";
 import { fail, isUniqueViolation, ok, toActionError, type ActionState } from "@/lib/action-result";
-import { cancelSchema, fieldErrors, parseRows, purchaseSchema, supplierSchema } from "@/lib/validation";
+import { cancelSchema, fieldErrors, parseRows, purchaseSchema } from "@/lib/validation";
 import { parseDateInput } from "@/lib/dates";
 import { cancelPurchase, postPurchase } from "@/server/services/purchases";
 
@@ -64,27 +64,6 @@ export async function cancelPurchaseAction(_prev: ActionState, formData: FormDat
     revalidatePath("/dashboard");
     return ok("Худалдан авалт цуцлагдлаа.");
   } catch (error) {
-    return toActionError(error);
-  }
-}
-
-export async function createSupplierAction(_prev: ActionState, formData: FormData): Promise<ActionState> {
-  try {
-    await requireOperator();
-    const parsed = supplierSchema.safeParse({
-      name: formData.get("name"),
-      phone: formData.get("phone"),
-      note: formData.get("note"),
-    });
-    if (!parsed.success) return fail("Мэдээллээ шалгана уу.", fieldErrors(parsed.error));
-
-    await prisma.supplier.create({
-      data: { name: parsed.data.name, phone: parsed.data.phone ?? null, note: parsed.data.note ?? null },
-    });
-    revalidatePath("/purchases");
-    return ok("Нийлүүлэгч нэмэгдлээ.");
-  } catch (error) {
-    if (isUniqueViolation(error)) return fail("Ийм нэртэй нийлүүлэгч бүртгэлтэй байна.");
     return toActionError(error);
   }
 }

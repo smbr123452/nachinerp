@@ -13,8 +13,14 @@ import { IDLE, type ActionState } from "@/lib/action-state";
 import { formatMoney, formatQty } from "@/lib/format";
 import { cn } from "@/lib/cn";
 import { compatibleUnits, unitLabel } from "@/lib/units";
-import type { SupplierSuggestion } from "@/server/services/supplier-history";
-import { fetchSupplierSuggestionsAction } from "./suggestions-action";
+import { Modal } from "@/components/ui/Modal";
+import { SupplierForm } from "../suppliers/SupplierForm";
+import { createSupplierAction } from "../suppliers/actions";
+import {
+  fetchSupplierSuggestionsAction,
+  type AssociatedSuggestion,
+  type SupplierSuggestionBundle,
+} from "./suggestions-action";
 import { createPurchaseAction } from "../actions";
 
 /**
@@ -52,7 +58,14 @@ export function PurchaseForm({
 }) {
   const [rows, setRows] = useState<Row[]>([{ ...EMPTY_ROW }]);
   const [supplierId, setSupplierId] = useState("");
-  const [suggestions, setSuggestions] = useState<SupplierSuggestion[]>([]);
+  // Нийлүүлэгчийн жагсаалтыг клиент талд барина: формын дотроос шинэ
+  // нийлүүлэгч үүсгэхэд хуудсыг дахин ачаалахгүйгээр нэмж, шууд сонгоно.
+  const [supplierList, setSupplierList] = useState(suppliers);
+  const [newSupplierOpen, setNewSupplierOpen] = useState(false);
+  const [suggestions, setSuggestions] = useState<SupplierSuggestionBundle>({
+    associated: [],
+    history: [],
+  });
   const [loadingSuggestions, setLoadingSuggestions] = useState(false);
   const [state, formAction] = useActionState<ActionState, FormData>(createPurchaseAction, IDLE);
   const byKey = useMemo(() => new Map(items.map((m) => [m.key, m])), [items]);
@@ -74,28 +87,57 @@ export function PurchaseForm({
 
   // Нийлүүлэгч солиход түүний түүхээс санал татна. Мөр АВТОМАТААР
   // нэмэгдэхгүй — доорх самбараас хэрэглэгч сонгож нэмнэ.
-  const onSupplierChange = (value: string) => {
-    setSupplierId(value);
-    setSuggestions([]);
+  const loadSuggestions = (value: string) => {
+    setSuggestions({ associated: [], history: [] });
     if (!value) return;
     setLoadingSuggestions(true);
     fetchSupplierSuggestionsAction(value)
       .then(setSuggestions)
-      .catch(() => setSuggestions([]))
+      .catch(() => setSuggestions({ associated: [], history: [] }))
       .finally(() => setLoadingSuggestions(false));
   };
 
+  const onSupplierChange = (value: string) => {
+    setSupplierId(value);
+    loadSuggestions(value);
+  };
+
+  /**
+   * Формын дотроос шинэ нийлүүлэгч үүсгэсний дараа.
+   *
+   * ЧУХАЛ: энд хуудас руу шилжихгүй, дахин ачаалахгүй. Оруулсан мөр, тоо
+   * хэмжээ, үнэ, төлбөр, тайлбар бүгд React төлөвт хэвээр үлдэнэ.
+   */
+  const onSupplierCreated = (data: unknown) => {
+    const created = data as { id?: string; name?: string } | undefined;
+    if (!created?.id || !created.name) return;
+    setSupplierList((current) =>
+      [...current, { id: created.id!, name: created.name! }].sort((a, b) =>
+        a.name.localeCompare(b.name, "mn"),
+      ),
+    );
+    setSupplierId(created.id);
+    loadSuggestions(created.id);
+  };
+
   /** Саналыг мөр болгон нэмнэ. Аль хэдийн байвал давхардуулахгүй. */
-  const addSuggestion = (suggestion: SupplierSuggestion) => {
-    if (!byKey.has(suggestion.key)) return;
+  const addSuggestion = (suggestion: {
+    key: string;
+    lastUnit: string | null;
+    lastUnitPrice: string | null;
+  }) => {
+    const option = byKey.get(suggestion.key);
+    if (!option) return;
     setRows((current) => {
       const existing = current.findIndex((row) => row.itemKey === suggestion.key);
       if (existing >= 0) return current;
       const row: Row = {
         itemKey: suggestion.key,
         quantity: "",
-        unit: suggestion.lastUnit as Unit,
-        unitPrice: suggestion.lastUnitPrice,
+        // Түүх байхгүй бол барааны үндсэн нэгжийг ашиглаж, үнийг хоосон
+        // үлдээнэ — үнэ зохиохгүй.
+        unit: (suggestion.lastUnit as Unit | null) ?? option.unit,
+        unitPrice: suggestion.lastUnitPrice ?? "",
       };
       // Эхний мөр хоосон бол түүнийг ашиглана.
       const blank = current.findIndex((r) => !r.itemKey);
@@ -104,6 +146,8 @@ export function PurchaseForm({
     });
   };
 
+  const addBlankRow = () => setRows((current) => [...current, { ...EMPTY_ROW }]);
+
   const usedKeys = new Set(rows.map((row) => row.itemKey).filter(Boolean));
 
   const total = rows.reduce((acc, row) => acc + toNumber(row.quantity) * toNumber(row.unitPrice), 0);
@@ -111,6 +155,7 @@ export function PurchaseForm({
   const totalQuantity = rows.reduce((acc, row) => acc + toNumber(row.quantity), 0);
 
   return (
+    <>
     <form action={formAction} className="space-y-6">
       {state.status === "error" && state.message ? <Alert tone="error">{state.message}</Alert> : null}
 
@@ -124,21 +169,34 @@ export function PurchaseForm({
             <Field
               label="Нийлүүлэгч"
               htmlFor="supplierId"
-              hint="Сонгоход өмнө нь авч байсан бараа санал болгоно."
+              hint="Сонгоход эндээс авдаг бараа санал болгоно."
             >
-              <Select
-                id="supplierId"
-                name="supplierId"
-                value={supplierId}
-                onChange={(event) => onSupplierChange(event.target.value)}
-              >
-                <option value="">— Сонгоогүй —</option>
-                {suppliers.map((supplier) => (
-                  <option key={supplier.id} value={supplier.id}>
-                    {supplier.name}
-                  </option>
-                ))}
-              </Select>
+              <div className="flex flex-wrap items-center gap-2">
+                <Select
+                  id="supplierId"
+                  name="supplierId"
+                  value={supplierId}
+                  onChange={(event) => onSupplierChange(event.target.value)}
+                  className="min-w-0 flex-1"
+                >
+                  <option value="">— Сонгоогүй —</option>
+                  {supplierList.map((supplier) => (
+                    <option key={supplier.id} value={supplier.id}>
+                      {supplier.name}
+                    </option>
+                  ))}
+                </Select>
+                {/* Шинэ нийлүүлэгчийг ЭНД, хуудсаа орхилгүй үүсгэнэ —
+                    оруулсан мөр, үнэ, төлбөр бүгд хэвээр үлдэнэ. */}
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  icon={<Plus />}
+                  onClick={() => setNewSupplierOpen(true)}
+                >
+                  Шинэ
+                </Button>
+              </div>
             </Field>
             <Field label="Төлбөрийн хэлбэр" htmlFor="paymentMethod" required>
               <Select id="paymentMethod" name="paymentMethod" defaultValue="CASH">
@@ -157,43 +215,54 @@ export function PurchaseForm({
       {supplierId ? (
         <Card>
           <CardHeader
-            title="Энэ нийлүүлэгчээс өмнө авсан бараа"
-            description="Батлагдсан худалдан авалтын түүхээс. Дарж мөр болгон нэмнэ — автоматаар нэмэгдэхгүй."
+            title="Энэ нийлүүлэгчийн бараа"
+            description="Дарж мөр болгон нэмнэ — автоматаар нэмэгдэхгүй. Холбогдоогүй барааг ч худалдан авч болно."
           />
-          <CardBody>
+          <CardBody className="space-y-4">
             {loadingSuggestions ? (
               <p className="text-[13px] text-ink-500">Ачаалж байна...</p>
-            ) : suggestions.length === 0 ? (
-              <p className="text-[13px] text-ink-500">
-                Энэ нийлүүлэгчээс өмнө авсан бүртгэл алга байна.
-              </p>
             ) : (
-              <div className="flex flex-wrap gap-2">
-                {suggestions.map((suggestion) => {
-                  const added = usedKeys.has(suggestion.key);
-                  return (
-                    <button
-                      key={suggestion.key}
-                      type="button"
-                      disabled={added}
-                      onClick={() => addSuggestion(suggestion)}
-                      className={cn(
-                        "rounded-lg border px-3 py-2 text-left text-[13px] transition-colors",
-                        added
-                          ? "cursor-not-allowed border-ink-200 bg-ink-50 text-ink-400"
-                          : "border-ink-300 bg-white text-ink-700 hover:border-brand-400 hover:bg-brand-50",
-                      )}
-                    >
-                      <span className="block font-medium">{suggestion.name}</span>
-                      <span className="block text-ink-500">
-                        Сүүлд {formatMoney(Number(suggestion.lastUnitPrice))} /{" "}
-                        {unitLabel(suggestion.lastUnit as Unit)} ·{" "}
-                        {suggestion.timesPurchased} удаа
-                      </span>
-                    </button>
-                  );
-                })}
-              </div>
+              <>
+                {/* Гараар холбосон бараа — "эндээс авдаг" гэсэн хэвшил. */}
+                <SuggestionGroup
+                  label="Энэ нийлүүлэгчээс авдаг бараа"
+                  emptyText="Холбогдсон бараа алга байна."
+                  chips={suggestions.associated.map((item) => ({
+                    key: item.key,
+                    name: item.name,
+                    detail: item.lastUnitPrice
+                      ? `Сүүлд ${formatMoney(Number(item.lastUnitPrice))} / ${unitLabel(item.lastUnit as Unit)}`
+                      : "Хараахан аваагүй",
+                    lastUnit: item.lastUnit,
+                    lastUnitPrice: item.lastUnitPrice,
+                  }))}
+                  usedKeys={usedKeys}
+                  onAdd={addSuggestion}
+                />
+
+                {/* Бодит худалдан авалтын түүх — холбоосоос тусдаа ойлголт. */}
+                {suggestions.history.length > 0 ? (
+                  <SuggestionGroup
+                    label="Өмнө нь авч байсан (түүхээс)"
+                    emptyText=""
+                    chips={suggestions.history.map((item) => ({
+                      key: item.key,
+                      name: item.name,
+                      detail: `Сүүлд ${formatMoney(Number(item.lastUnitPrice))} / ${unitLabel(item.lastUnit as Unit)} · ${item.timesPurchased} удаа`,
+                      lastUnit: item.lastUnit,
+                      lastUnitPrice: item.lastUnitPrice,
+                    }))}
+                    usedKeys={usedKeys}
+                    onAdd={addSuggestion}
+                  />
+                ) : null}
+
+                <div className="pt-1">
+                  <Button variant="secondary" size="sm" icon={<Plus />} onClick={addBlankRow}>
+                    Өөр бараа нэмэх
+                  </Button>
+                </div>
+              </>
             )}
           </CardBody>
         </Card>
@@ -313,7 +382,7 @@ export function PurchaseForm({
             variant="secondary"
             size="sm"
             icon={<Plus />}
-            onClick={() => setRows((current) => [...current, { ...EMPTY_ROW }])}
+            onClick={addBlankRow}
           >
             Мөр нэмэх
           </Button>
@@ -335,5 +404,81 @@ export function PurchaseForm({
         }
       />
     </form>
+
+    {/* Модал нь худалдан авалтын формын ГАДНА байрлана: HTML-д форм дотор
+        форм байж болохгүй бөгөөд тэгвэл дотоод форм илгээгдэхгүй. Ингэснээр
+        нийлүүлэгч үүсгэх нь гадаад формын төлөвт огт нөлөөлөхгүй. */}
+    <Modal
+      open={newSupplierOpen}
+      onClose={() => setNewSupplierOpen(false)}
+      title="Шинэ нийлүүлэгч"
+      description="Хадгалсны дараа шууд сонгогдоно. Оруулсан мөрүүд хэвээр үлдэнэ."
+      size="lg"
+    >
+      <SupplierForm
+        action={createSupplierAction}
+        onDone={() => setNewSupplierOpen(false)}
+        onSuccess={onSupplierCreated}
+      />
+    </Modal>
+    </>
+  );
+}
+
+type Chip = {
+  key: string;
+  name: string;
+  detail: string;
+  lastUnit: string | null;
+  lastUnitPrice: string | null;
+};
+
+/**
+ * Саналын нэг бүлэг. Дарахад л мөр нэмэгдэнэ — автоматаар хэзээ ч нэмэгдэхгүй.
+ * Аль хэдийн формд орсон барааны товч идэвхгүй болно.
+ */
+function SuggestionGroup({
+  label,
+  emptyText,
+  chips,
+  usedKeys,
+  onAdd,
+}: {
+  label: string;
+  emptyText: string;
+  chips: Chip[];
+  usedKeys: Set<string>;
+  onAdd: (chip: Chip) => void;
+}) {
+  return (
+    <div>
+      <p className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-ink-500">{label}</p>
+      {chips.length === 0 ? (
+        emptyText ? <p className="text-[13px] text-ink-500">{emptyText}</p> : null
+      ) : (
+        <div className="flex flex-wrap gap-2">
+          {chips.map((chip) => {
+            const added = usedKeys.has(chip.key);
+            return (
+              <button
+                key={chip.key}
+                type="button"
+                disabled={added}
+                onClick={() => onAdd(chip)}
+                className={cn(
+                  "rounded-lg border px-3 py-2 text-left text-[13px] transition-colors",
+                  added
+                    ? "cursor-not-allowed border-ink-200 bg-ink-50 text-ink-400"
+                    : "border-ink-300 bg-white text-ink-700 hover:border-brand-400 hover:bg-brand-50",
+                )}
+              >
+                <span className="block font-medium">{chip.name}</span>
+                <span className="block text-ink-500">{chip.detail}</span>
+              </button>
+            );
+          })}
+        </div>
+      )}
+    </div>
   );
 }

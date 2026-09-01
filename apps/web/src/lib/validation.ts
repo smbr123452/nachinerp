@@ -140,8 +140,19 @@ export const purchaseSchema = z.object({
 export const supplierSchema = z.object({
   name: requiredText("Нэр", 150),
   phone: optionalText,
+  contactPerson: optionalText,
+  /** Хоосон байж болно; бичсэн бол хэлбэрийг нь шалгана. */
+  email: z
+    .string()
+    .optional()
+    .transform((v) => (v && v.trim() ? v.trim() : undefined))
+    .refine((v) => v === undefined || z.string().email().safeParse(v).success, {
+      message: "И-мэйл хаяг буруу байна.",
+    }),
   note: optionalText,
 });
+
+export const supplierUpdateSchema = supplierSchema.extend({ id: z.string().min(1) });
 
 // --- Борлуулалт -----------------------------------------------------------
 
