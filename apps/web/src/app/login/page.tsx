@@ -1,55 +1,26 @@
-type LoginPageProps = {
-  searchParams: Promise<{ error?: string }>;
-};
+import { redirect } from "next/navigation";
+import { getCurrentUser } from "@/lib/auth/session";
+import { getSetting, SETTING_KEYS } from "@/server/services/settings";
+import { LoginForm } from "./LoginForm";
 
-export default async function LoginPage({ searchParams }: LoginPageProps) {
-  const params = await searchParams;
-  const showError = params.error === "invalid" || params.error === "missing";
+export const metadata = { title: "Нэвтрэх | Начин ERP" };
+
+export default async function LoginPage() {
+  const user = await getCurrentUser();
+  if (user) redirect("/dashboard");
+  const companyName = await getSetting(SETTING_KEYS.COMPANY_NAME);
 
   return (
-    <main className="flex min-h-screen items-center justify-center p-4">
-      <div className="w-full max-w-md rounded-lg border bg-white p-6 shadow-sm">
-        <h1 className="mb-1 text-xl font-semibold">Нэвтрэх</h1>
-        <p className="mb-6 text-sm text-neutral-600">ERP системд нэвтрэх мэдээллээ оруулна уу.</p>
-        {showError ? (
-          <p className="mb-4 rounded border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
-            Нэвтрэх мэдээлэл буруу байна.
-          </p>
-        ) : null}
-
-        <form className="space-y-4" method="post" action="/api/auth/login">
-          <div className="space-y-1">
-            <label htmlFor="username" className="block text-sm font-medium">
-              Хэрэглэгчийн нэр
-            </label>
-            <input
-              id="username"
-              name="username"
-              required
-              className="w-full rounded border px-3 py-2 text-sm outline-none focus:border-black"
-              placeholder="Жишээ: admin"
-            />
-          </div>
-
-          <div className="space-y-1">
-            <label htmlFor="password" className="block text-sm font-medium">
-              Нууц үг
-            </label>
-            <input
-              id="password"
-              name="password"
-              type="password"
-              required
-              className="w-full rounded border px-3 py-2 text-sm outline-none focus:border-black"
-            />
-          </div>
-
-          <button type="submit" className="w-full rounded bg-black px-4 py-2 text-sm font-medium text-white">
-            Нэвтрэх
-          </button>
-        </form>
+    <main className="flex min-h-screen items-center justify-center bg-slate-100 px-4 py-10">
+      <div className="w-full max-w-sm">
+        <div className="mb-6 text-center">
+          <h1 className="text-2xl font-semibold text-slate-900">{companyName}</h1>
+          <p className="mt-1 text-sm text-slate-500">Удирдлагын системд нэвтрэх</p>
+        </div>
+        <div className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
+          <LoginForm />
+        </div>
       </div>
     </main>
   );
 }
-

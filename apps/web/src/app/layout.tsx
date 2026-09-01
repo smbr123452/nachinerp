@@ -2,8 +2,8 @@ import type { Metadata } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Nachin ERP",
-  description: "Internal ERP system",
+  title: "Начин ERP",
+  description: "Үйлдвэрлэл, борлуулалт, нөөцийн энгийн удирдлагын систем",
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
@@ -13,4 +13,3 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     </html>
   );
 }
-
