@@ -3,8 +3,7 @@
 @tailwind utilities;
 
 :root {
-  --background: #ffffff;
-  --foreground: #0a0a0a;
+  color-scheme: light;
 }
 
 html,
@@ -13,7 +12,16 @@ body {
 }
 
 body {
-  color: var(--foreground);
-  background: var(--background);
+  @apply bg-slate-50 text-slate-900 antialiased;
 }
 
+/* Тоон утгыг хүснэгтэд эгнүүлэхэд */
+.tabular {
+  font-variant-numeric: tabular-nums;
+}
+
+@media print {
+  .no-print {
+    display: none !important;
+  }
+}

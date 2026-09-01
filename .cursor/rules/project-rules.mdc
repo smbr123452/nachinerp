@@ -3,13 +3,16 @@ description: Project rules
 alwaysApply: true
 ---
 
-This is an internal ERP system.
+Internal ERP-lite system (single company, single main inventory).
 
 Rules:
 - Always plan before coding
 - Use TypeScript
 - Use PostgreSQL with Prisma
-- Keep code clean and modular
+- Keep code clean and modular; business logic in `src/server/services/`
 - Use Mongolian language in UI
 - Add audit log for important actions
+- Never mutate stock or balances directly — write a ledger entry
+- Cancel/reverse financial records instead of deleting them
+- Validate permissions on the server for every protected operation
 - Do not break existing code
