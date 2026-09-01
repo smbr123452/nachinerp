@@ -45,9 +45,15 @@ export default async function PurchasesPage({ searchParams }: { searchParams: Se
         title="Худалдан авалт"
         description={`Батлагдсан баримтын нийт дүн ${formatMoney(postedTotal)}`}
         action={
-          <Link href="/purchases/new">
-            <Button>+ Шинэ худалдан авалт</Button>
-          </Link>
+          <>
+            {/* Хоёрдогч үйлдэл — үндсэн үйлдэл нь "Шинэ худалдан авалт" хэвээр. */}
+            <Link href="/purchases/suppliers">
+              <Button variant="secondary">Нийлүүлэгчид</Button>
+            </Link>
+            <Link href="/purchases/new">
+              <Button>+ Шинэ худалдан авалт</Button>
+            </Link>
+          </>
         }
       />
 

@@ -116,6 +116,7 @@ model User {
   moneyTxns       MoneyTransaction[]   @relation("MoneyTxnCreatedBy")
   inventoryCounts InventoryCount[]     @relation("CountCreatedBy")
   attachments     PurchaseAttachment[] @relation("AttachmentUploadedBy")
+  supplierItems   SupplierItem[]       @relation("SupplierItemCreatedBy")
 
   @@index([isActive])
 }
@@ -172,6 +173,7 @@ model RawMaterial {
   purchaseItems PurchaseItem[]
   recipeItems   RecipeItem[]
   countItems    InventoryCountItem[]
+  supplierItems SupplierItem[]
 
   @@index([isActive])
   @@index([categoryId])
@@ -219,6 +221,7 @@ model Product {
   saleItems     SaleItem[]
   movements     InventoryMovement[]
   purchaseItems PurchaseItem[]
+  supplierItems SupplierItem[]
 
   @@index([isActive])
   @@index([categoryId])
@@ -248,15 +251,52 @@ model RecipeItem {
 // ---------------------------------------------------------------------------
 
 model Supplier {
-  id        String   @id @default(cuid())
-  name      String   @unique
-  phone     String?
-  note      String?
-  isActive  Boolean  @default(true)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id            String   @id @default(cuid())
+  name          String   @unique
+  phone         String?
+  contactPerson String?
+  email         String?
+  note          String?
+  isActive      Boolean  @default(true)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
 
   purchases Purchase[]
+  items     SupplierItem[]
+
+  @@index([isActive])
+}
+
+/// Нийлүүлэгч ↔ бараа холбоос: "энэ барааг ихэвчлэн эндээс авдаг".
+///
+/// Энэ нь ЗӨВХӨН мастер өгөгдлийн сонголт — худалдан авалт болсон гэсэн үг
+/// БИШ. Бодит үнэ ба огноо нь ҮРГЭЛЖ PurchaseItem түүхээс гарна. Тиймээс
+/// энд үнэ хадгалахгүй (lastPurchasePrice, defaultPrice гэх мэт ОГТ байхгүй).
+///
+/// rawMaterialId / productId-ийн ЯГ НЭГ нь утгатай (DB CHECK).
+/// Зөвхөн идэвхтэй түүхий эд, эсвэл идэвхтэй RESALE бүтээгдэхүүн холбогдоно —
+/// үйлдвэрлэдэг бүтээгдэхүүнийг худалдаж авдаггүй.
+model SupplierItem {
+  id            String   @id @default(cuid())
+  supplierId    String
+  rawMaterialId String?
+  productId     String?
+  createdById   String
+  createdAt     DateTime @default(now())
+
+  supplier    Supplier     @relation(fields: [supplierId], references: [id], onDelete: Cascade)
+  rawMaterial RawMaterial? @relation(fields: [rawMaterialId], references: [id], onDelete: Cascade)
+  product     Product?     @relation(fields: [productId], references: [id], onDelete: Cascade)
+  createdBy   User         @relation("SupplierItemCreatedBy", fields: [createdById], references: [id], onDelete: Restrict)
+
+  /// Нэг нийлүүлэгчид нэг бараа давхардахгүй. Postgres-д NULL нь ялгаатай
+  /// тул (supplierId, NULL) хос олон удаа давтагдаж болно — энэ нь зөв:
+  /// нэг нийлүүлэгч олон бүтээгдэхүүнтэй байхад түүхий эдийн индекс саад болохгүй.
+  @@unique([supplierId, rawMaterialId])
+  @@unique([supplierId, productId])
+  @@index([supplierId])
+  @@index([rawMaterialId])
+  @@index([productId])
 }
 
 model Purchase {

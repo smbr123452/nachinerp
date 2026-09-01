@@ -260,3 +260,82 @@ export async function getLastPurchase(subject: {
     quantity: item.quantity.toString(),
   };
 }
+
+export type SupplierItemPrice = {
+  /** "rm:<id>" / "pr:<id>" — холбоосын мөртэй тааруулах түлхүүр. */
+  key: string;
+  unitPrice: string;
+  baseUnitCost: string;
+  unit: Unit;
+  date: Date;
+  purchaseId: string;
+  purchaseNo: string;
+};
+
+/**
+ * Тухайн НИЙЛҮҮЛЭГЧЭЭС тухайн бараануудыг сүүлд авсан үнэ ба огноо.
+ *
+ * ЗӨВХӨН POSTED баримт тооцогдоно — DRAFT, CANCELLED, REVERSED орохгүй.
+ * Хэзээ ч аваагүй бол тухайн бараа буцаах Map-д огт орохгүй (дэлгэц дээр "—").
+ *
+ * Бүх барааг НЭГ асуулгаар авна — мөр бүрд тусад нь асуулга явуулахгүй.
+ */
+export async function getSupplierItemPrices(
+  supplierId: string,
+): Promise<Map<string, SupplierItemPrice>> {
+  const items = await prisma.purchaseItem.findMany({
+    where: { purchase: { supplierId, status: "POSTED" } },
+    include: {
+      purchase: { select: { id: true, purchaseNo: true, date: true } },
+    },
+    // Огноо ижил бол бүртгэсэн дараалал шийднэ.
+    orderBy: [{ purchase: { date: "desc" } }, { purchase: { createdAt: "desc" } }],
+  });
+
+  const result = new Map<string, SupplierItemPrice>();
+  for (const item of items) {
+    const key = item.rawMaterialId ? `rm:${item.rawMaterialId}` : `pr:${item.productId}`;
+    // Жагсаалт огноогоор буурахаар ирдэг тул ЭХНИЙ таарсан нь сүүлийнх.
+    if (result.has(key)) continue;
+    result.set(key, {
+      key,
+      unitPrice: item.unitPrice.toString(),
+      baseUnitCost: item.baseUnitCost.toString(),
+      unit: item.unit,
+      date: item.purchase.date,
+      purchaseId: item.purchase.id,
+      purchaseNo: item.purchase.purchaseNo,
+    });
+  }
+  return result;
+}
+
+/**
+ * Нэг нийлүүлэгч + нэг барааны худалдан авалтын түүх (POSTED).
+ * Дэлгэрэнгүй хуудсан дээрх жижиг "Түүх" харагдацад ашиглагдана.
+ */
+export async function getSupplierItemHistory(
+  supplierId: string,
+  subject: { rawMaterialId?: string | null; productId?: string | null },
+  limit = 20,
+): Promise<{ date: Date; purchaseId: string; purchaseNo: string; quantity: string; unit: Unit; unitPrice: string }[]> {
+  const items = await prisma.purchaseItem.findMany({
+    where: {
+      purchase: { supplierId, status: "POSTED" },
+      ...(subject.rawMaterialId ? { rawMaterialId: subject.rawMaterialId } : {}),
+      ...(subject.productId ? { productId: subject.productId } : {}),
+    },
+    include: { purchase: { select: { id: true, purchaseNo: true, date: true } } },
+    orderBy: [{ purchase: { date: "desc" } }, { purchase: { createdAt: "desc" } }],
+    take: limit,
+  });
+
+  return items.map((item) => ({
+    date: item.purchase.date,
+    purchaseId: item.purchase.id,
+    purchaseNo: item.purchase.purchaseNo,
+    quantity: item.quantity.toString(),
+    unit: item.unit,
+    unitPrice: item.unitPrice.toString(),
+  }));
+}
