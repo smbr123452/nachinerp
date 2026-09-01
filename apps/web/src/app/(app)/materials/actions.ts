@@ -14,6 +14,7 @@ import {
   rawMaterialUpdateSchema,
 } from "@/lib/validation";
 import { postManualAdjustment } from "@/server/services/adjustments";
+import { nextEntityCode } from "@/server/services/numbering";
 
 export async function createRawMaterialAction(
   _prev: ActionState,
@@ -22,7 +23,6 @@ export async function createRawMaterialAction(
   try {
     const user = await requireOperator();
     const parsed = rawMaterialSchema.safeParse({
-      sku: formData.get("sku"),
       name: formData.get("name"),
       categoryId: formData.get("categoryId"),
       unit: formData.get("unit"),
@@ -31,9 +31,12 @@ export async function createRawMaterialAction(
     });
     if (!parsed.success) return fail("Мэдээллээ шалгана уу.", fieldErrors(parsed.error));
 
+    // Код нь sequence-ээс — зэрэгцээ хүсэлтэд ч давхцахгүй.
+    const sku = await nextEntityCode("rawMaterial");
+
     const material = await prisma.rawMaterial.create({
       data: {
-        sku: parsed.data.sku,
+        sku,
         name: parsed.data.name,
         categoryId: parsed.data.categoryId ?? null,
         unit: parsed.data.unit,
@@ -67,7 +70,6 @@ export async function updateRawMaterialAction(
     const user = await requireOperator();
     const parsed = rawMaterialUpdateSchema.safeParse({
       id: formData.get("id"),
-      sku: formData.get("sku"),
       name: formData.get("name"),
       categoryId: formData.get("categoryId"),
       unit: formData.get("unit"),
@@ -88,7 +90,7 @@ export async function updateRawMaterialAction(
     const updated = await prisma.rawMaterial.update({
       where: { id: parsed.data.id },
       data: {
-        sku: parsed.data.sku,
+        // Код өөрчлөгдөхгүй — түүхэн баримтуудын холбоос тогтвортой байна.
         name: parsed.data.name,
         categoryId: parsed.data.categoryId ?? null,
         unit: parsed.data.unit,

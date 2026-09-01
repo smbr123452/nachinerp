@@ -18,12 +18,14 @@ export type ProductOption = {
   name: string;
   sku: string;
   sellingPrice: string;
+  productType: "MANUFACTURED" | "RESALE";
   hasRecipe: boolean;
   /** Жорын мөрүүд — нөөцийн шалгалтыг шууд харуулахад ашиглана. */
   recipe: { rawMaterialId: string; baseQuantity: number }[];
 };
 
-export type MaterialStock = { id: string; name: string; quantity: number; unit: string };
+/** Нөөцийн нэгж: түүхий эд ("rm:<id>") эсвэл RESALE бүтээгдэхүүн ("pr:<id>"). */
+export type MaterialStock = { key: string; name: string; quantity: number; unit: string };
 
 type Row = { productId: string; quantity: string; unitPrice: string };
 
@@ -50,7 +52,7 @@ export function SaleForm({
   const [state, formAction] = useActionState<ActionState, FormData>(createSaleBatchAction, IDLE);
 
   const productById = useMemo(() => new Map(products.map((p) => [p.id, p])), [products]);
-  const materialById = useMemo(() => new Map(materials.map((m) => [m.id, m])), [materials]);
+  const stockByKey = useMemo(() => new Map(materials.map((m) => [m.key, m])), [materials]);
 
   const total = rows.reduce((acc, row) => acc + toNumber(row.quantity) * toNumber(row.unitPrice), 0);
   const paymentTotal =
@@ -64,30 +66,37 @@ export function SaleForm({
   const filledRows = rows.filter((row) => row.productId && toNumber(row.quantity) > 0).length;
   const totalUnits = rows.reduce((acc, row) => acc + toNumber(row.quantity), 0);
 
-  // Жорын дагуух материалын хэрэглээг урьдчилан харуулна.
+  // Хасагдах нөөцийг урьдчилан харуулна: жорын материал, эсвэл дамжуулан
+  // борлуулах бүтээгдэхүүн өөрөө.
   const consumption = useMemo(() => {
     const map = new Map<string, number>();
     for (const row of rows) {
       const product = productById.get(row.productId);
       if (!product) continue;
       const quantity = toNumber(row.quantity);
-      for (const line of product.recipe) {
-        map.set(line.rawMaterialId, (map.get(line.rawMaterialId) ?? 0) + line.baseQuantity * quantity);
+      if (product.productType === "RESALE") {
+        const key = `pr:${product.id}`;
+        map.set(key, (map.get(key) ?? 0) + quantity);
+      } else {
+        for (const line of product.recipe) {
+          const key = `rm:${line.rawMaterialId}`;
+          map.set(key, (map.get(key) ?? 0) + line.baseQuantity * quantity);
+        }
       }
     }
     return [...map.entries()]
-      .map(([rawMaterialId, required]) => {
-        const material = materialById.get(rawMaterialId);
+      .map(([key, required]) => {
+        const stock = stockByKey.get(key);
         return {
-          rawMaterialId,
-          name: material?.name ?? "",
-          unit: material?.unit ?? "",
+          key,
+          name: stock?.name ?? "",
+          unit: stock?.unit ?? "",
           required,
-          available: material?.quantity ?? 0,
+          available: stock?.quantity ?? 0,
         };
       })
       .sort((a, b) => a.name.localeCompare(b.name, "mn"));
-  }, [rows, productById, materialById]);
+  }, [rows, productById, stockByKey]);
 
   const shortages = consumption.filter((line) => line.required > line.available + 1e-9);
   const missingRecipe = rows
@@ -125,7 +134,7 @@ export function SaleForm({
       <Card>
         <CardHeader
           title="Борлуулсан бүтээгдэхүүн"
-          description="Баталгаажуулахад жорын дагуу материал автоматаар хасагдана."
+          description="Баталгаажуулахад жорын материал болон дамжуулан борлуулах бүтээгдэхүүний нөөц автоматаар хасагдана."
         />
         <Table>
           <thead>
@@ -219,7 +228,7 @@ export function SaleForm({
       {consumption.length > 0 ? (
         <Card>
           <CardHeader
-            title="Хасагдах материал"
+            title="Хасагдах нөөц"
             description="Жорын дагуу тооцоолсон урьдчилсан дүн"
           />
           <Table>
@@ -235,7 +244,7 @@ export function SaleForm({
               {consumption.map((line) => {
                 const short = line.required > line.available + 1e-9;
                 return (
-                  <tr key={line.rawMaterialId} className={cn(short && "bg-red-50")}>
+                  <tr key={line.key} className={cn(short && "bg-red-50")}>
                     <Td>{line.name}</Td>
                     <Td align="right">
                       {formatQty(line.required)} {line.unit}

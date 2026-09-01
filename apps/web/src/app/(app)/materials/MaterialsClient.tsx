@@ -50,8 +50,9 @@ function MaterialForm({
       {state.status === "error" && state.message ? <Alert tone="error">{state.message}</Alert> : null}
 
       <div className="grid gap-4 sm:grid-cols-2">
-        <Field label="Код (SKU)" htmlFor="sku" required error={state.fieldErrors?.sku}>
-          <Input id="sku" name="sku" defaultValue={initial?.sku} required placeholder="RM-001" />
+        {/* Код автоматаар үүсдэг тул зөвхөн харагдана — засах боломжгүй. */}
+        <Field label="Код" htmlFor="sku" hint={initial ? undefined : "Хадгалахад автоматаар үүснэ."}>
+          <Input id="sku" value={initial?.sku ?? "Автоматаар"} readOnly disabled />
         </Field>
         <Field label="Нэр" htmlFor="name" required error={state.fieldErrors?.name}>
           <Input id="name" name="name" defaultValue={initial?.name} required placeholder="Гурил" />

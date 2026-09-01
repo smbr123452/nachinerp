@@ -30,26 +30,39 @@ export default async function NewSalePage() {
     name: product.name,
     sku: product.sku,
     sellingPrice: product.sellingPrice.toString(),
-    hasRecipe: product.recipeItems.length > 0,
+    productType: product.productType,
+    // Дамжуулан борлуулах бүтээгдэхүүнд жор шаардлагагүй — өөрөө нөөцтэй.
+    hasRecipe: product.productType === "RESALE" || product.recipeItems.length > 0,
     recipe: product.recipeItems.map((item) => ({
       rawMaterialId: item.rawMaterialId,
       baseQuantity: convertQuantity(item.quantity, item.unit, item.rawMaterial.unit).toNumber(),
     })),
   }));
 
-  const materialStock: MaterialStock[] = materials.map((material) => ({
-    id: material.id,
-    name: material.name,
-    quantity: d(material.quantity).toNumber(),
-    unit: unitLabel(material.unit),
-  }));
+  // Нөөцийн урьдчилсан шалгалтад түүхий эд ба RESALE бүтээгдэхүүн хоёулаа орно.
+  const materialStock: MaterialStock[] = [
+    ...materials.map((material) => ({
+      key: `rm:${material.id}`,
+      name: material.name,
+      quantity: d(material.quantity).toNumber(),
+      unit: unitLabel(material.unit),
+    })),
+    ...products
+      .filter((product) => product.productType === "RESALE")
+      .map((product) => ({
+        key: `pr:${product.id}`,
+        name: product.name,
+        quantity: d(product.quantity).toNumber(),
+        unit: unitLabel(product.unit),
+      })),
+  ];
 
   return (
     <>
       <PageHeader
         backHref="/sales"
         title="Өдрийн борлуулалт бүртгэх"
-        description="Оройн борлуулалтын дүнг оруулна. Жорын дагуу материал автоматаар хасагдана."
+        description="Оройн борлуулалтын дүнг оруулна. Жортой бүтээгдэхүүний материал, дамжуулан борлуулах бүтээгдэхүүний нөөц автоматаар хасагдана."
       />
       {productOptions.length === 0 ? (
         <EmptyState

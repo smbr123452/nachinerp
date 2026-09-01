@@ -6,10 +6,12 @@ import { StatCard } from "@/components/ui/StatCard";
 import { EmptyRow, Table, TableLink, Td, Th, TotalRow, Tr } from "@/components/ui/Table";
 import { requirePageUser } from "@/lib/auth/guards";
 import { d, ZERO } from "@/lib/decimal";
-import { formatDate, formatMoney, formatPercent, formatQty } from "@/lib/format";
+import { formatDate, formatDateTime, formatMoney, formatMoneyPrecise, formatPercent, formatQty } from "@/lib/format";
+import { MOVEMENT_TYPE_LABEL } from "@/lib/movements";
 import { prisma } from "@/lib/prisma";
 import { unitLabel } from "@/lib/units";
 import { calculateRecipeCost } from "@/server/services/recipes";
+import { PRODUCT_TYPE_LABEL } from "../ProductsClient";
 import { RecipeEditor, type MaterialOption, type RecipeRow } from "./RecipeEditor";
 
 type Params = Promise<{ id: string }>;
@@ -24,7 +26,9 @@ export default async function ProductDetailPage({ params }: { params: Params }) 
   });
   if (!product) notFound();
 
-  const [summary, materials, recentSales] = await Promise.all([
+  const isResale = product.productType === "RESALE";
+
+  const [summary, materials, recentSales, movements] = await Promise.all([
     calculateRecipeCost(id),
     prisma.rawMaterial.findMany({
       where: { isActive: true },
@@ -37,7 +41,23 @@ export default async function ProductDetailPage({ params }: { params: Params }) 
       take: 20,
       include: { saleBatch: { select: { id: true, batchNo: true, date: true } } },
     }),
+    // Нөөцийн хөдөлгөөн зөвхөн дамжуулан борлуулах бүтээгдэхүүнд утгатай.
+    isResale
+      ? prisma.inventoryMovement.findMany({
+          where: { productId: id },
+          orderBy: { createdAt: "desc" },
+          take: 100,
+          include: { createdBy: { select: { name: true } } },
+        })
+      : Promise.resolve([]),
   ]);
+
+  // Үйлдвэрлэдэг бол жорын өртөг, дамжуулан борлуулдаг бол авалтын дундаж өртөг.
+  const unitCost = isResale ? d(product.averageCost) : summary.recipeCost;
+  const unitProfit = d(product.sellingPrice).minus(unitCost);
+  const unitMargin = d(product.sellingPrice).greaterThan(0)
+    ? unitProfit.dividedBy(product.sellingPrice).times(100)
+    : ZERO;
 
   const materialOptions: MaterialOption[] = materials.map((m) => ({
     id: m.id,
@@ -58,7 +78,7 @@ export default async function ProductDetailPage({ params }: { params: Params }) 
       <PageHeader
         backHref="/products"
         title={product.name}
-        description={`${product.sku} · ${product.category?.name ?? "Ангилалгүй"}`}
+        description={`${product.sku} · ${PRODUCT_TYPE_LABEL[product.productType]} · ${product.category?.name ?? "Ангилалгүй"}`}
       />
 
       {!product.isActive ? (
@@ -68,32 +88,94 @@ export default async function ProductDetailPage({ params }: { params: Params }) 
       ) : null}
 
       <div className="mb-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        <StatCard label="Зарах үнэ" value={formatMoney(summary.sellingPrice)} />
-        <StatCard label="Одоогийн жорын өртөг" value={formatMoney(summary.recipeCost)} />
+        <StatCard label="Зарах үнэ" value={formatMoney(product.sellingPrice)} />
+        <StatCard
+          label={isResale ? "Авалтын дундаж өртөг" : "Одоогийн жорын өртөг"}
+          value={formatMoney(unitCost)}
+        />
         <StatCard
           label="Нэгжийн ашиг"
-          value={formatMoney(summary.grossProfit)}
-          tone={summary.grossProfit.isNegative() ? "negative" : "positive"}
+          value={formatMoney(unitProfit)}
+          tone={unitProfit.isNegative() ? "negative" : "positive"}
         />
-        <StatCard label="Ашгийн хувь" value={formatPercent(summary.grossMargin.toNumber())} />
+        {isResale ? (
+          <StatCard
+            label="Үлдэгдэл"
+            value={`${formatQty(product.quantity)} ${unitLabel(product.unit)}`}
+            tone={
+              d(product.minimumStock).greaterThan(0) &&
+              d(product.quantity).lessThan(product.minimumStock)
+                ? "negative"
+                : "default"
+            }
+          />
+        ) : (
+          <StatCard label="Ашгийн хувь" value={formatPercent(unitMargin.toNumber())} />
+        )}
       </div>
 
-      <Card className="mb-6">
-        <CardHeader
-          title="Жор (BOM)"
-          description="Борлуулалт бүртгэхэд эдгээр материал автоматаар хасагдана."
-        />
-        <CardBody>
-          <RecipeEditor
-            productId={product.id}
-            materials={materialOptions}
-            initialRows={initialRows}
-            sellingPrice={d(product.sellingPrice).toNumber()}
+      {isResale ? (
+        <Card className="mb-6">
+          <CardHeader
+            title="Нөөцийн хөдөлгөөн"
+            description="Сүүлийн 100 бичлэг. Худалдан авалтаар нэмэгдэж, борлуулалтаар хасагдана."
           />
-        </CardBody>
-      </Card>
+          <Table>
+            <thead>
+              <tr>
+                <Th>Огноо</Th>
+                <Th>Төрөл</Th>
+                <Th align="right">Хэмжээ</Th>
+                <Th align="right">Нэгж өртөг</Th>
+                <Th align="right">Үлдэгдэл</Th>
+                <Th>Тайлбар</Th>
+                <Th>Бүртгэсэн</Th>
+              </tr>
+            </thead>
+            <tbody>
+              {movements.length === 0 ? (
+                <EmptyRow colSpan={7}>Хөдөлгөөн бүртгэгдээгүй байна.</EmptyRow>
+              ) : (
+                movements.map((movement) => {
+                  const positive = d(movement.quantity).greaterThan(0);
+                  return (
+                    <Tr key={movement.id}>
+                      <Td className="whitespace-nowrap">{formatDateTime(movement.createdAt)}</Td>
+                      <Td>{MOVEMENT_TYPE_LABEL[movement.movementType]}</Td>
+                      <Td align="right" className={positive ? "text-emerald-600" : "text-red-600"}>
+                        {positive ? "+" : ""}
+                        {formatQty(movement.quantity)}
+                      </Td>
+                      <Td align="right">{formatMoneyPrecise(movement.unitCost)}</Td>
+                      <Td align="right">{formatQty(movement.balanceAfter)}</Td>
+                      <Td className="text-ink-500">{movement.note ?? "-"}</Td>
+                      <Td className="text-ink-500">{movement.createdBy.name}</Td>
+                    </Tr>
+                  );
+                })
+              )}
+            </tbody>
+          </Table>
+        </Card>
+      ) : (
+        <Card className="mb-6">
+          <CardHeader
+            title="Жор (BOM)"
+            description="Борлуулалт бүртгэхэд эдгээр материал автоматаар хасагдана."
+          />
+          <CardBody>
+            <RecipeEditor
+              productId={product.id}
+              materials={materialOptions}
+              initialRows={initialRows}
+              sellingPrice={d(product.sellingPrice).toNumber()}
+            />
+          </CardBody>
+        </Card>
+      )}
 
-      <div className="grid gap-4 lg:grid-cols-2">
+      <div className={isResale ? "grid gap-4" : "grid gap-4 lg:grid-cols-2"}>
+        {isResale ? null : (
         <Card>
           <CardHeader title="Одоогийн жорын задаргаа" />
           <Table>
@@ -141,6 +223,7 @@ export default async function ProductDetailPage({ params }: { params: Params }) 
             </tbody>
           </Table>
         </Card>
+        )}
 
         <Card>
           <CardHeader title="Сүүлийн борлуулалт" description="Тухайн үеийн бодит өртгөөр" />

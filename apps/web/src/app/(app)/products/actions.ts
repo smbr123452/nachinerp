@@ -5,6 +5,7 @@ import { requireOperator } from "@/lib/auth/guards";
 import { getClientIp } from "@/lib/auth/session";
 import { writeAudit } from "@/lib/audit";
 import { prisma } from "@/lib/prisma";
+import { d } from "@/lib/decimal";
 import { fail, isUniqueViolation, ok, toActionError, type ActionState } from "@/lib/action-result";
 import {
   fieldErrors,
@@ -15,26 +16,37 @@ import {
   recipeSchema,
 } from "@/lib/validation";
 import { isConvertible, unitLabel } from "@/lib/units";
+import { nextEntityCode } from "@/server/services/numbering";
 
 export async function createProductAction(_prev: ActionState, formData: FormData): Promise<ActionState> {
   try {
     const user = await requireOperator();
     const parsed = productSchema.safeParse({
-      sku: formData.get("sku"),
       name: formData.get("name"),
       categoryId: formData.get("categoryId"),
+      productType: formData.get("productType"),
       sellingPrice: formNumber(formData, "sellingPrice"),
       isActive: formData.get("isActive") === "on",
+      unit: formData.get("unit") ?? undefined,
+      minimumStock: formNumber(formData, "minimumStock"),
     });
     if (!parsed.success) return fail("Мэдээллээ шалгана уу.", fieldErrors(parsed.error));
 
+    const isResale = parsed.data.productType === "RESALE";
+    // Код нь sequence-ээс — зэрэгцээ хүсэлтэд ч давхцахгүй.
+    const sku = await nextEntityCode("product");
+
     const product = await prisma.product.create({
       data: {
-        sku: parsed.data.sku,
+        sku,
         name: parsed.data.name,
         categoryId: parsed.data.categoryId ?? null,
+        productType: parsed.data.productType,
         sellingPrice: parsed.data.sellingPrice,
         isActive: parsed.data.isActive,
+        // Нөөцийн талбарууд зөвхөн RESALE-д утгатай.
+        unit: isResale ? parsed.data.unit : "PCS",
+        minimumStock: isResale ? parsed.data.minimumStock : 0,
       },
     });
 
@@ -43,7 +55,12 @@ export async function createProductAction(_prev: ActionState, formData: FormData
       action: "PRODUCT_CREATED",
       entityType: "Product",
       entityId: product.id,
-      newValue: { sku: product.sku, name: product.name, sellingPrice: product.sellingPrice.toString() },
+      newValue: {
+        sku: product.sku,
+        name: product.name,
+        productType: product.productType,
+        sellingPrice: product.sellingPrice.toString(),
+      },
       ipAddress: await getClientIp(),
     });
 
@@ -60,25 +77,50 @@ export async function updateProductAction(_prev: ActionState, formData: FormData
     const user = await requireOperator();
     const parsed = productUpdateSchema.safeParse({
       id: formData.get("id"),
-      sku: formData.get("sku"),
       name: formData.get("name"),
       categoryId: formData.get("categoryId"),
+      productType: formData.get("productType"),
       sellingPrice: formNumber(formData, "sellingPrice"),
       isActive: formData.get("isActive") === "on",
+      unit: formData.get("unit") ?? undefined,
+      minimumStock: formNumber(formData, "minimumStock"),
     });
     if (!parsed.success) return fail("Мэдээллээ шалгана уу.", fieldErrors(parsed.error));
 
-    const before = await prisma.product.findUnique({ where: { id: parsed.data.id } });
+    const before = await prisma.product.findUnique({
+      where: { id: parsed.data.id },
+      include: { _count: { select: { recipeItems: true } } },
+    });
     if (!before) return fail("Бүтээгдэхүүн олдсонгүй.");
+
+    // Төрөл солих нь өртгийн эх сурвалжийг өөрчилдөг тул хязгаартай.
+    const typeChanged = before.productType !== parsed.data.productType;
+    if (typeChanged) {
+      if (!d(before.quantity).equals(0)) {
+        return fail("Үлдэгдэлтэй бүтээгдэхүүний төрлийг солих боломжгүй.");
+      }
+      if (parsed.data.productType === "RESALE" && before._count.recipeItems > 0) {
+        return fail("Жортой бүтээгдэхүүнийг дамжуулан борлуулах болгох бол эхлээд жорыг нь хоосолно уу.");
+      }
+    }
+
+    const isResale = parsed.data.productType === "RESALE";
+    // Үлдэгдэлтэй бүтээгдэхүүний үндсэн нэгжийг солих нь өртгийг гажуудуулна.
+    if (isResale && before.unit !== parsed.data.unit && !d(before.quantity).equals(0)) {
+      return fail("Үлдэгдэлтэй бүтээгдэхүүний нэгжийг солих боломжгүй.");
+    }
 
     const updated = await prisma.product.update({
       where: { id: parsed.data.id },
       data: {
-        sku: parsed.data.sku,
+        // Код өөрчлөгдөхгүй — түүхэн баримтуудын холбоос тогтвортой байна.
         name: parsed.data.name,
         categoryId: parsed.data.categoryId ?? null,
+        productType: parsed.data.productType,
         sellingPrice: parsed.data.sellingPrice,
         isActive: parsed.data.isActive,
+        unit: isResale ? parsed.data.unit : "PCS",
+        minimumStock: isResale ? parsed.data.minimumStock : 0,
       },
     });
 
@@ -90,13 +132,19 @@ export async function updateProductAction(_prev: ActionState, formData: FormData
       oldValue: {
         sku: before.sku,
         name: before.name,
+        productType: before.productType,
         sellingPrice: before.sellingPrice.toString(),
+        unit: before.unit,
+        minimumStock: before.minimumStock.toString(),
         isActive: before.isActive,
       },
       newValue: {
         sku: updated.sku,
         name: updated.name,
+        productType: updated.productType,
         sellingPrice: updated.sellingPrice.toString(),
+        unit: updated.unit,
+        minimumStock: updated.minimumStock.toString(),
         isActive: updated.isActive,
       },
       ipAddress: await getClientIp(),
