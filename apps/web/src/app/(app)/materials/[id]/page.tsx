@@ -1,3 +1,4 @@
+import type { Unit } from "@prisma/client";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { PageHeader } from "@/components/layout/PageHeader";
@@ -13,6 +14,7 @@ import { prisma } from "@/lib/prisma";
 import { unitLabel } from "@/lib/units";
 import { MOVEMENT_TYPE_LABEL } from "@/lib/movements";
 import { inventoryValue } from "@/server/services/inventory";
+import { getLastPriceBySupplier } from "@/server/services/supplier-history";
 import { AdjustmentButton } from "./AdjustmentButton";
 
 type Params = Promise<{ id: string }>;
@@ -48,7 +50,7 @@ export default async function MaterialDetailPage({
   const isLow =
     d(material.minimumStock).greaterThan(0) && d(material.quantity).lessThan(material.minimumStock);
 
-  const [movements, purchaseItems, countItems, recipeUsage] = await Promise.all([
+  const [movements, purchaseItems, countItems, recipeUsage, supplierPrices] = await Promise.all([
     prisma.inventoryMovement.findMany({
       where: { rawMaterialId: id },
       orderBy: { createdAt: "desc" },
@@ -71,6 +73,8 @@ export default async function MaterialDetailPage({
       where: { rawMaterialId: id },
       include: { product: { select: { id: true, name: true, isActive: true } } },
     }),
+    // Нийлүүлэгч тус бүрийн сүүлийн үнэ — хаанаас хямд авахыг харуулна.
+    getLastPriceBySupplier({ rawMaterialId: id }),
   ]);
 
   return (
@@ -308,6 +312,47 @@ export default async function MaterialDetailPage({
       ) : null}
 
       {tab === "prices" ? (
+        <>
+        <Card className="mb-6">
+          <CardHeader
+            title="Нийлүүлэгч тус бүрийн сүүлийн үнэ"
+            description="Батлагдсан худалдан авалтын түүхээс. Хамгийн хямдыг нь тодруулав."
+          />
+          <Table>
+            <thead>
+              <tr>
+                <Th>Нийлүүлэгч</Th>
+                <Th>Сүүлд авсан</Th>
+                <Th align="right">Нэгж үнэ</Th>
+              </tr>
+            </thead>
+            <tbody>
+              {supplierPrices.length === 0 ? (
+                <EmptyRow colSpan={3}>Худалдан авалтын түүх алга байна.</EmptyRow>
+              ) : (
+                [...supplierPrices]
+                  .sort((a, b) => d(a.unitPrice).comparedTo(d(b.unitPrice)))
+                  .map((row, index) => (
+                    <Tr key={row.supplierId ?? "none"}>
+                      <Td className={index === 0 ? "font-medium text-ink-900" : undefined}>
+                        {row.supplierName}
+                        {index === 0 && supplierPrices.length > 1 ? (
+                          <Badge tone="success" className="ml-2">
+                            Хамгийн хямд
+                          </Badge>
+                        ) : null}
+                      </Td>
+                      <Td className="text-ink-500">{formatDate(row.date)}</Td>
+                      <Td align="right" className="font-medium">
+                        {formatMoneyPrecise(row.unitPrice)} / {unitLabel(row.unit as Unit)}
+                      </Td>
+                    </Tr>
+                  ))
+              )}
+            </tbody>
+          </Table>
+        </Card>
+
         <Card>
           <CardHeader
             title="Түүхий эдийн үнийн түүх"
@@ -346,6 +391,7 @@ export default async function MaterialDetailPage({
             </tbody>
           </Table>
         </Card>
+        </>
       ) : null}
     </>
   );

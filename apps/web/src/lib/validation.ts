@@ -102,12 +102,32 @@ export const recipeSchema = z.object({
 
 // --- Худалдан авалт -------------------------------------------------------
 
-export const purchaseLineSchema = z.object({
-  rawMaterialId: z.string().min(1, "Материал сонгоно уу."),
-  quantity: positiveAmount,
-  unit: z.nativeEnum(Unit),
-  unitPrice: nonNegativeAmount,
-});
+/**
+ * Худалдан авалтын мөр. Формоос "rm:<id>" / "pr:<id>" хэлбэрийн нэг
+ * түлхүүрээр ирж, энд түүхий эд / бүтээгдэхүүн болж задарна.
+ */
+export const purchaseLineSchema = z
+  .object({
+    itemKey: z.string().min(1, "Бараа сонгоно уу."),
+    quantity: positiveAmount,
+    unit: z.nativeEnum(Unit),
+    unitPrice: nonNegativeAmount,
+  })
+  .transform((line, ctx) => {
+    const match = /^(rm|pr):(.+)$/.exec(line.itemKey);
+    if (!match) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["itemKey"], message: "Бараа сонгоно уу." });
+      return z.NEVER;
+    }
+    const [, kind, id] = match;
+    return {
+      rawMaterialId: kind === "rm" ? id : null,
+      productId: kind === "pr" ? id : null,
+      quantity: line.quantity,
+      unit: line.unit,
+      unitPrice: line.unitPrice,
+    };
+  });
 
 export const purchaseSchema = z.object({
   date: dateInput,

@@ -11,10 +11,20 @@ import { SummaryPanel } from "@/components/ui/SummaryPanel";
 import { Table, Td, Th, TotalRow, Tr } from "@/components/ui/Table";
 import { IDLE, type ActionState } from "@/lib/action-state";
 import { formatMoney, formatQty } from "@/lib/format";
+import { cn } from "@/lib/cn";
 import { compatibleUnits, unitLabel } from "@/lib/units";
+import type { SupplierSuggestion } from "@/server/services/supplier-history";
+import { fetchSupplierSuggestionsAction } from "./suggestions-action";
 import { createPurchaseAction } from "../actions";
 
-export type MaterialOption = {
+/**
+ * Худалдан авах боломжтой зүйл: түүхий эд эсвэл дамжуулан борлуулах
+ * бүтээгдэхүүн. key нь "rm:<id>" / "pr:<id>" — сонголтыг нэг талбараар
+ * илэрхийлж, серверт зөв талбар руу задална.
+ */
+export type ItemOption = {
+  key: string;
+  kind: "rawMaterial" | "product";
   id: string;
   name: string;
   sku: string;
@@ -22,9 +32,9 @@ export type MaterialOption = {
   lastPurchasePrice: string | null;
 };
 
-type Row = { rawMaterialId: string; quantity: string; unit: Unit; unitPrice: string };
+type Row = { itemKey: string; quantity: string; unit: Unit; unitPrice: string };
 
-const EMPTY_ROW: Row = { rawMaterialId: "", quantity: "", unit: "KG", unitPrice: "" };
+const EMPTY_ROW: Row = { itemKey: "", quantity: "", unit: "KG", unitPrice: "" };
 
 function toNumber(value: string): number {
   const parsed = Number(value.replace(/\s|,/g, ""));
@@ -32,32 +42,72 @@ function toNumber(value: string): number {
 }
 
 export function PurchaseForm({
-  materials,
+  items,
   suppliers,
   today,
 }: {
-  materials: MaterialOption[];
+  items: ItemOption[];
   suppliers: { id: string; name: string }[];
   today: string;
 }) {
   const [rows, setRows] = useState<Row[]>([{ ...EMPTY_ROW }]);
+  const [supplierId, setSupplierId] = useState("");
+  const [suggestions, setSuggestions] = useState<SupplierSuggestion[]>([]);
+  const [loadingSuggestions, setLoadingSuggestions] = useState(false);
   const [state, formAction] = useActionState<ActionState, FormData>(createPurchaseAction, IDLE);
-  const byId = useMemo(() => new Map(materials.map((m) => [m.id, m])), [materials]);
+  const byKey = useMemo(() => new Map(items.map((m) => [m.key, m])), [items]);
+
+  const materials = useMemo(() => items.filter((i) => i.kind === "rawMaterial"), [items]);
+  const products = useMemo(() => items.filter((i) => i.kind === "product"), [items]);
 
   const update = (index: number, patch: Partial<Row>) =>
     setRows((current) => current.map((row, i) => (i === index ? { ...row, ...patch } : row)));
 
-  const onMaterialChange = (index: number, rawMaterialId: string) => {
-    const material = byId.get(rawMaterialId);
+  const onItemChange = (index: number, itemKey: string) => {
+    const option = byKey.get(itemKey);
     update(index, {
-      rawMaterialId,
-      unit: material?.unit ?? "KG",
-      unitPrice: material?.lastPurchasePrice ?? "",
+      itemKey,
+      unit: option?.unit ?? "KG",
+      unitPrice: option?.lastPurchasePrice ?? "",
     });
   };
 
+  // Нийлүүлэгч солиход түүний түүхээс санал татна. Мөр АВТОМАТААР
+  // нэмэгдэхгүй — доорх самбараас хэрэглэгч сонгож нэмнэ.
+  const onSupplierChange = (value: string) => {
+    setSupplierId(value);
+    setSuggestions([]);
+    if (!value) return;
+    setLoadingSuggestions(true);
+    fetchSupplierSuggestionsAction(value)
+      .then(setSuggestions)
+      .catch(() => setSuggestions([]))
+      .finally(() => setLoadingSuggestions(false));
+  };
+
+  /** Саналыг мөр болгон нэмнэ. Аль хэдийн байвал давхардуулахгүй. */
+  const addSuggestion = (suggestion: SupplierSuggestion) => {
+    if (!byKey.has(suggestion.key)) return;
+    setRows((current) => {
+      const existing = current.findIndex((row) => row.itemKey === suggestion.key);
+      if (existing >= 0) return current;
+      const row: Row = {
+        itemKey: suggestion.key,
+        quantity: "",
+        unit: suggestion.lastUnit as Unit,
+        unitPrice: suggestion.lastUnitPrice,
+      };
+      // Эхний мөр хоосон бол түүнийг ашиглана.
+      const blank = current.findIndex((r) => !r.itemKey);
+      if (blank >= 0) return current.map((r, i) => (i === blank ? row : r));
+      return [...current, row];
+    });
+  };
+
+  const usedKeys = new Set(rows.map((row) => row.itemKey).filter(Boolean));
+
   const total = rows.reduce((acc, row) => acc + toNumber(row.quantity) * toNumber(row.unitPrice), 0);
-  const filledRows = rows.filter((row) => row.rawMaterialId && toNumber(row.quantity) > 0).length;
+  const filledRows = rows.filter((row) => row.itemKey && toNumber(row.quantity) > 0).length;
   const totalQuantity = rows.reduce((acc, row) => acc + toNumber(row.quantity), 0);
 
   return (
@@ -71,8 +121,17 @@ export function PurchaseForm({
             <Field label="Огноо" htmlFor="date" required error={state.fieldErrors?.date}>
               <Input id="date" name="date" type="date" defaultValue={today} required />
             </Field>
-            <Field label="Нийлүүлэгч" htmlFor="supplierId">
-              <Select id="supplierId" name="supplierId" defaultValue="">
+            <Field
+              label="Нийлүүлэгч"
+              htmlFor="supplierId"
+              hint="Сонгоход өмнө нь авч байсан бараа санал болгоно."
+            >
+              <Select
+                id="supplierId"
+                name="supplierId"
+                value={supplierId}
+                onChange={(event) => onSupplierChange(event.target.value)}
+              >
                 <option value="">— Сонгоогүй —</option>
                 {suppliers.map((supplier) => (
                   <option key={supplier.id} value={supplier.id}>
@@ -95,8 +154,53 @@ export function PurchaseForm({
         </CardBody>
       </Card>
 
+      {supplierId ? (
+        <Card>
+          <CardHeader
+            title="Энэ нийлүүлэгчээс өмнө авсан бараа"
+            description="Батлагдсан худалдан авалтын түүхээс. Дарж мөр болгон нэмнэ — автоматаар нэмэгдэхгүй."
+          />
+          <CardBody>
+            {loadingSuggestions ? (
+              <p className="text-[13px] text-ink-500">Ачаалж байна...</p>
+            ) : suggestions.length === 0 ? (
+              <p className="text-[13px] text-ink-500">
+                Энэ нийлүүлэгчээс өмнө авсан бүртгэл алга байна.
+              </p>
+            ) : (
+              <div className="flex flex-wrap gap-2">
+                {suggestions.map((suggestion) => {
+                  const added = usedKeys.has(suggestion.key);
+                  return (
+                    <button
+                      key={suggestion.key}
+                      type="button"
+                      disabled={added}
+                      onClick={() => addSuggestion(suggestion)}
+                      className={cn(
+                        "rounded-lg border px-3 py-2 text-left text-[13px] transition-colors",
+                        added
+                          ? "cursor-not-allowed border-ink-200 bg-ink-50 text-ink-400"
+                          : "border-ink-300 bg-white text-ink-700 hover:border-brand-400 hover:bg-brand-50",
+                      )}
+                    >
+                      <span className="block font-medium">{suggestion.name}</span>
+                      <span className="block text-ink-500">
+                        Сүүлд {formatMoney(Number(suggestion.lastUnitPrice))} /{" "}
+                        {unitLabel(suggestion.lastUnit as Unit)} ·{" "}
+                        {suggestion.timesPurchased} удаа
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+          </CardBody>
+        </Card>
+      ) : null}
+
       <Card>
-        <CardHeader title="Худалдан авсан бараа" description="Нэгжийг материалын үндсэн нэгж рүү автоматаар хөрвүүлнэ." />
+        <CardHeader title="Худалдан авсан бараа" description="Нэгжийг үндсэн нэгж рүү автоматаар хөрвүүлнэ." />
         <Table>
           <thead>
             <tr>
@@ -110,23 +214,36 @@ export function PurchaseForm({
           </thead>
           <tbody>
             {rows.map((row, index) => {
-              const material = byId.get(row.rawMaterialId);
-              const units = material ? compatibleUnits(material.unit) : [];
+              const option = byKey.get(row.itemKey);
+              const units = option ? compatibleUnits(option.unit) : [];
               const subtotal = toNumber(row.quantity) * toNumber(row.unitPrice);
               return (
                 <Tr key={index}>
                   <Td>
                     <Select
-                      name={`items[${index}][rawMaterialId]`}
-                      value={row.rawMaterialId}
-                      onChange={(event) => onMaterialChange(index, event.target.value)}
+                      name={`items[${index}][itemKey]`}
+                      value={row.itemKey}
+                      onChange={(event) => onItemChange(index, event.target.value)}
                     >
                       <option value="">— Сонгох —</option>
-                      {materials.map((option) => (
-                        <option key={option.id} value={option.id}>
-                          {option.name} ({option.sku})
-                        </option>
-                      ))}
+                      {materials.length > 0 ? (
+                        <optgroup label="Бараа материал">
+                          {materials.map((item) => (
+                            <option key={item.key} value={item.key}>
+                              {item.name} ({item.sku})
+                            </option>
+                          ))}
+                        </optgroup>
+                      ) : null}
+                      {products.length > 0 ? (
+                        <optgroup label="Худалдан авч борлуулдаг бүтээгдэхүүн">
+                          {products.map((item) => (
+                            <option key={item.key} value={item.key}>
+                              {item.name} ({item.sku})
+                            </option>
+                          ))}
+                        </optgroup>
+                      ) : null}
                     </Select>
                   </Td>
                   <Td align="right">
@@ -144,7 +261,7 @@ export function PurchaseForm({
                       name={`items[${index}][unit]`}
                       value={row.unit}
                       onChange={(event) => update(index, { unit: event.target.value as Unit })}
-                      disabled={!material}
+                      disabled={!option}
                       className="w-28"
                     >
                       {(units.length > 0 ? units : [row.unit]).map((unit) => (
