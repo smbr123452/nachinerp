@@ -39,14 +39,18 @@ export function LineChart({
   const [active, setActive] = useState<number | null>(null);
   const [pointer, setPointer] = useState({ x: 0, y: 0, width: 0 });
 
-  const { max, ticks } = useMemo(() => {
-    const highest = Math.max(...series.flatMap((s) => s.values), 0);
-    if (highest <= 0) return { max: 1, ticks: [0] };
-    const step = niceStep(highest / 4);
+  // Домэйн нь сөрөг утгыг ч багтаана (үлдэгдэл, цэвэр урсгал хасах гарч болно).
+  const { min, max, ticks } = useMemo(() => {
+    const values = series.flatMap((s) => s.values);
+    const highest = Math.max(...values, 0);
+    const lowest = Math.min(...values, 0);
+    if (highest === 0 && lowest === 0) return { min: 0, max: 1, ticks: [0] };
+    const step = niceStep((highest - lowest) / 4);
     const top = Math.ceil(highest / step) * step;
+    const bottom = Math.floor(lowest / step) * step;
     const list: number[] = [];
-    for (let value = 0; value <= top + 0.5; value += step) list.push(value);
-    return { max: top, ticks: list };
+    for (let value = bottom; value <= top + step * 0.001; value += step) list.push(value);
+    return { min: bottom, max: top === bottom ? bottom + step : top, ticks: list };
   }, [series]);
 
   if (labels.length === 0 || series.length === 0) return <ChartEmpty />;
@@ -56,7 +60,8 @@ export function LineChart({
   const stepX = labels.length > 1 ? plotW / (labels.length - 1) : 0;
 
   const xAt = (index: number) => PAD.left + (labels.length > 1 ? index * stepX : plotW / 2);
-  const yAt = (value: number) => PAD.top + plotH - (value / max) * plotH;
+  const span = max - min || 1;
+  const yAt = (value: number) => PAD.top + plotH - ((value - min) / span) * plotH;
 
   const onMove = (event: React.MouseEvent<HTMLDivElement>) => {
     const rect = containerRef.current?.getBoundingClientRect();
@@ -114,6 +119,18 @@ export function LineChart({
               </text>
             </g>
           ))}
+
+          {/* Тэгийн шугам — сөрөг утгатай үед чиг баримжаа өгнө */}
+          {min < 0 ? (
+            <line
+              x1={PAD.left}
+              x2={VIEW_W - PAD.right}
+              y1={yAt(0)}
+              y2={yAt(0)}
+              stroke={AXIS_TEXT}
+              strokeWidth={1}
+            />
+          ) : null}
 
           {/* Хөндлөн шугам (crosshair) */}
           {active !== null ? (
