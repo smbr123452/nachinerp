@@ -11,7 +11,9 @@ import { MOVEMENT_TYPE_LABEL } from "@/lib/movements";
 import { prisma } from "@/lib/prisma";
 import { unitLabel } from "@/lib/units";
 import { calculateRecipeCost } from "@/server/services/recipes";
-import { PRODUCT_TYPE_LABEL } from "@/lib/products";
+import { PRODUCT_TYPE_LABEL, productFinancials, profitTone } from "@/lib/products";
+import { getLastPurchase } from "@/server/services/supplier-history";
+import { cn } from "@/lib/cn";
 import { RecipeEditor, type MaterialOption, type RecipeRow } from "./RecipeEditor";
 
 type Params = Promise<{ id: string }>;
@@ -28,7 +30,7 @@ export default async function ProductDetailPage({ params }: { params: Params }) 
 
   const isResale = product.productType === "RESALE";
 
-  const [summary, materials, recentSales, movements] = await Promise.all([
+  const [summary, materials, recentSales, movements, lastPurchase] = await Promise.all([
     calculateRecipeCost(id),
     prisma.rawMaterial.findMany({
       where: { isActive: true },
@@ -41,7 +43,7 @@ export default async function ProductDetailPage({ params }: { params: Params }) 
       take: 20,
       include: { saleBatch: { select: { id: true, batchNo: true, date: true } } },
     }),
-    // Нөөцийн хөдөлгөөн зөвхөн дамжуулан борлуулах бүтээгдэхүүнд утгатай.
+    // Нөөцийн хөдөлгөөн зөвхөн бэлэн бүтээгдэхүүнд утгатай.
     isResale
       ? prisma.inventoryMovement.findMany({
           where: { productId: id },
@@ -50,14 +52,22 @@ export default async function ProductDetailPage({ params }: { params: Params }) 
           include: { createdBy: { select: { name: true } } },
         })
       : Promise.resolve([]),
+    // Сүүлийн авсан үнэ нь ЗӨВХӨН батлагдсан худалдан авалтын түүхээс
+    // гардаг тул үйлдвэрлэдэг бүтээгдэхүүнд утгагүй.
+    isResale ? getLastPurchase({ productId: id }) : Promise.resolve(null),
   ]);
 
-  // Үйлдвэрлэдэг бол жорын өртөг, дамжуулан борлуулдаг бол авалтын дундаж өртөг.
-  const unitCost = isResale ? d(product.averageCost) : summary.recipeCost;
-  const unitProfit = d(product.sellingPrice).minus(unitCost);
-  const unitMargin = d(product.sellingPrice).greaterThan(0)
-    ? unitProfit.dividedBy(product.sellingPrice).times(100)
-    : ZERO;
+  // Өртөг, ашиг, ашгийн хувь — жагсаалттай ижил хуваалцсан туслахаас.
+  const hasRecipe = product.recipeItems.length > 0;
+  const fin = productFinancials({
+    productType: product.productType,
+    sellingPrice: product.sellingPrice,
+    averageCost: product.averageCost,
+    recipeCost: hasRecipe ? summary.recipeCost : null,
+  });
+  const profitStatTone = profitTone(fin.unitProfit);
+  const isLowStock =
+    d(product.minimumStock).greaterThan(0) && d(product.quantity).lessThan(product.minimumStock);
 
   const materialOptions: MaterialOption[] = materials.map((m) => ({
     id: m.id,
@@ -87,32 +97,57 @@ export default async function ProductDetailPage({ params }: { params: Params }) 
         </div>
       ) : null}
 
-      <div className="mb-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        <StatCard label="Зарах үнэ" value={formatMoney(product.sellingPrice)} />
+      {/* Санхүүгийн хураангуй. Өртгийн эх сурвалж төрлөөс хамаарна:
+          үйлдвэрлэдэг — жорноос, бэлэн бүтээгдэхүүн — авалтын дунджаас. */}
+      <div className="mb-4 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <StatCard
-          label={isResale ? "Авалтын дундаж өртөг" : "Одоогийн жорын өртөг"}
-          value={formatMoney(unitCost)}
+          label={isResale ? "Дундаж өртөг" : "Жорын өртөг"}
+          value={fin.unitCost ? formatMoney(fin.unitCost) : "—"}
+          hint={isResale ? "Жигнэсэн дундаж авалтын өртөг" : "Материалын одоогийн дундаж өртгөөр"}
+        />
+        <StatCard label="Зарах үнэ" value={formatMoney(fin.sellingPrice)} />
+        <StatCard
+          label="Нэгж ашиг"
+          value={fin.unitProfit ? formatMoney(fin.unitProfit) : "—"}
+          tone={profitStatTone}
         />
         <StatCard
-          label="Нэгжийн ашиг"
-          value={formatMoney(unitProfit)}
-          tone={unitProfit.isNegative() ? "negative" : "positive"}
+          label="Ашгийн хувь"
+          value={fin.marginPercent ? formatPercent(fin.marginPercent.toNumber()) : "—"}
+          tone={profitStatTone}
+          hint={fin.marginPercent ? "Зарах үнэд эзлэх хувь" : "Зарах үнэ тодорхойгүй"}
         />
-        {isResale ? (
-          <StatCard
-            label="Үлдэгдэл"
-            value={`${formatQty(product.quantity)} ${unitLabel(product.unit)}`}
-            tone={
-              d(product.minimumStock).greaterThan(0) &&
-              d(product.quantity).lessThan(product.minimumStock)
-                ? "negative"
-                : "default"
-            }
-          />
-        ) : (
-          <StatCard label="Ашгийн хувь" value={formatPercent(unitMargin.toNumber())} />
-        )}
       </div>
+
+      {/* Бэлэн бүтээгдэхүүний нэмэлт мөр: үлдэгдэл ба сүүлийн авалт.
+          Тус бүрийг том хайрцаг болгохгүй — нэг эгнээнд товч харуулна. */}
+      {isResale ? (
+        <div className="mb-6 flex flex-wrap items-center gap-x-6 gap-y-2 rounded-card border border-ink-200 bg-white px-4 py-3 shadow-card">
+          <span className="text-[13px] text-ink-500">
+            Үлдэгдэл:{" "}
+            <span className={cn("tabular font-medium", isLowStock ? "text-red-600" : "text-ink-900")}>
+              {formatQty(product.quantity)} {unitLabel(product.unit)}
+            </span>
+          </span>
+          <span className="text-[13px] text-ink-500">
+            Сүүлийн авсан үнэ:{" "}
+            <span className="tabular font-medium text-ink-900">
+              {lastPurchase ? formatMoneyPrecise(lastPurchase.baseUnitCost) : "—"}
+            </span>
+          </span>
+          {lastPurchase ? (
+            <span className="text-[13px] text-ink-500">
+              Сүүлийн худалдан авалт:{" "}
+              <TableLink href={`/purchases/${lastPurchase.purchaseId}`}>
+                {lastPurchase.purchaseNo}
+              </TableLink>{" "}
+              · {formatDate(lastPurchase.date)} · {lastPurchase.supplierName}
+            </span>
+          ) : (
+            <span className="text-[13px] text-ink-500">Худалдан авалтын түүх алга байна.</span>
+          )}
+        </div>
+      ) : null}
 
       {isResale ? (
         <Card className="mb-6">
