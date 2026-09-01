@@ -7,7 +7,6 @@ import { writeAudit } from "@/lib/audit";
 import { prisma } from "@/lib/prisma";
 import { fail, isUniqueViolation, ok, toActionError, type ActionState } from "@/lib/action-result";
 import {
-  categorySchema,
   fieldErrors,
   formNumber,
   parseRows,
@@ -112,22 +111,6 @@ export async function updateProductAction(_prev: ActionState, formData: FormData
   }
 }
 
-export async function createProductCategoryAction(
-  _prev: ActionState,
-  formData: FormData,
-): Promise<ActionState> {
-  try {
-    await requireOperator();
-    const parsed = categorySchema.safeParse({ name: formData.get("name") });
-    if (!parsed.success) return fail("Нэрээ шалгана уу.", fieldErrors(parsed.error));
-    await prisma.productCategory.create({ data: { name: parsed.data.name } });
-    revalidatePath("/products");
-    return ok("Ангилал нэмэгдлээ.");
-  } catch (error) {
-    if (isUniqueViolation(error)) return fail("Ийм нэртэй ангилал бүртгэлтэй байна.");
-    return toActionError(error);
-  }
-}
 
 /**
  * Жорыг бүхэлд нь солино. Хуучин / шинэ утга аудитад бүртгэгдэнэ.

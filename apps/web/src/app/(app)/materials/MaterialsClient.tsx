@@ -10,7 +10,6 @@ import { Modal, ModalActions } from "@/components/ui/Modal";
 import { IDLE, type ActionState } from "@/lib/action-state";
 import { ALL_UNITS, unitLabel } from "@/lib/units";
 import {
-  createMaterialCategoryAction,
   createRawMaterialAction,
   updateRawMaterialAction,
 } from "./actions";
@@ -153,39 +152,6 @@ export function EditMaterialButton({
           categories={categories}
           onDone={() => setOpen(false)}
         />
-      </Modal>
-    </>
-  );
-}
-
-export function NewCategoryButton() {
-  const [open, setOpen] = useState(false);
-  const [state, formAction] = useActionState<ActionState, FormData>(createMaterialCategoryAction, IDLE);
-
-  useEffect(() => {
-    if (state.status === "success") setOpen(false);
-  }, [state]);
-
-  return (
-    <>
-      <Button variant="secondary" onClick={() => setOpen(true)}>
-        Ангилал нэмэх
-      </Button>
-      <Modal open={open} onClose={() => setOpen(false)} title="Шинэ ангилал">
-        <form action={formAction} className="space-y-4">
-          {state.status === "error" && state.message ? (
-            <Alert tone="error">{state.message}</Alert>
-          ) : null}
-          <Field label="Нэр" htmlFor="category-name" required error={state.fieldErrors?.name}>
-            <Input id="category-name" name="name" required placeholder="Гурилан бүтээгдэхүүн" />
-          </Field>
-          <ModalActions>
-            <Button variant="secondary" onClick={() => setOpen(false)}>
-              Болих
-            </Button>
-            <SubmitButton>Хадгалах</SubmitButton>
-          </ModalActions>
-        </form>
       </Modal>
     </>
   );

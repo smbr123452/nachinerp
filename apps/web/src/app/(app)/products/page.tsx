@@ -9,14 +9,16 @@ import { d, ZERO } from "@/lib/decimal";
 import { formatMoney, formatPercent } from "@/lib/format";
 import { prisma } from "@/lib/prisma";
 import { calculateRecipeCosts } from "@/server/services/recipes";
-import { EditProductButton, NewProductButton, NewProductCategoryButton } from "./ProductsClient";
+import { CategoryManagerButton } from "@/components/categories/CategoryManager";
+import { listCategories } from "@/server/services/categories";
+import { EditProductButton, NewProductButton } from "./ProductsClient";
 
 export const metadata = { title: "Бүтээгдэхүүн | Начин ERP" };
 
 type SearchParams = Promise<{ q?: string; category?: string; status?: string }>;
 
 export default async function ProductsPage({ searchParams }: { searchParams: SearchParams }) {
-  await requirePageUser();
+  const user = await requirePageUser();
   const params = await searchParams;
 
   const where: Prisma.ProductWhereInput = {};
@@ -30,14 +32,17 @@ export default async function ProductsPage({ searchParams }: { searchParams: Sea
   if (params.status === "inactive") where.isActive = false;
   else if (params.status === "active") where.isActive = true;
 
-  const [products, categories] = await Promise.all([
+  const [products, categoryRows] = await Promise.all([
     prisma.product.findMany({
       where,
       include: { category: true, _count: { select: { recipeItems: true } } },
       orderBy: [{ isActive: "desc" }, { name: "asc" }],
     }),
-    prisma.productCategory.findMany({ orderBy: { name: "asc" } }),
+    listCategories("product"),
   ]);
+
+  // Шинэ бүтээгдэхүүнд зөвхөн идэвхтэй ангиллыг санал болгоно.
+  const categories = categoryRows.filter((c) => c.isActive);
 
   const costs = await calculateRecipeCosts(products.map((p) => p.id));
 
@@ -48,7 +53,11 @@ export default async function ProductsPage({ searchParams }: { searchParams: Sea
         description={`Нийт ${products.length} бүтээгдэхүүн. Жорын өртөг материалын одоогийн дундаж өртгөөр бодогдоно.`}
         action={
           <>
-            <NewProductCategoryButton />
+            <CategoryManagerButton
+              kind="product"
+              categories={categoryRows}
+              canDelete={user.role === "OWNER"}
+            />
             <NewProductButton categories={categories} />
           </>
         }
@@ -59,7 +68,10 @@ export default async function ProductsPage({ searchParams }: { searchParams: Sea
         <FilterSelect
           paramKey="category"
           label="Ангилал"
-          options={categories.map((c) => ({ value: c.id, label: c.name }))}
+          options={categoryRows.map((c) => ({
+            value: c.id,
+            label: c.isActive ? c.name : `${c.name} (идэвхгүй)`,
+          }))}
         />
         <FilterSelect
           paramKey="status"

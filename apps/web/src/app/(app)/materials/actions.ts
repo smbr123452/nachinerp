@@ -7,7 +7,6 @@ import { writeAudit } from "@/lib/audit";
 import { prisma } from "@/lib/prisma";
 import { fail, isUniqueViolation, ok, toActionError, type ActionState } from "@/lib/action-result";
 import {
-  categorySchema,
   fieldErrors,
   formNumber,
   manualAdjustmentSchema,
@@ -129,22 +128,6 @@ export async function updateRawMaterialAction(
   }
 }
 
-export async function createMaterialCategoryAction(
-  _prev: ActionState,
-  formData: FormData,
-): Promise<ActionState> {
-  try {
-    await requireOperator();
-    const parsed = categorySchema.safeParse({ name: formData.get("name") });
-    if (!parsed.success) return fail("Нэрээ шалгана уу.", fieldErrors(parsed.error));
-    await prisma.rawMaterialCategory.create({ data: { name: parsed.data.name } });
-    revalidatePath("/materials");
-    return ok("Ангилал нэмэгдлээ.");
-  } catch (error) {
-    if (isUniqueViolation(error)) return fail("Ийм нэртэй ангилал бүртгэлтэй байна.");
-    return toActionError(error);
-  }
-}
 
 export async function manualAdjustmentAction(
   _prev: ActionState,
