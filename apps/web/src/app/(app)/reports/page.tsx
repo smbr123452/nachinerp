@@ -271,9 +271,15 @@ async function PurchaseReport({ range }: RangeProps) {
           ) : (
             <>
               {rows.map((row) => (
-                <Tr key={row.rawMaterialId}>
+                <Tr key={row.key}>
                   <Td>
-                    <TableLink href={`/materials/${row.rawMaterialId}`}>
+                    <TableLink
+                      href={
+                        row.rawMaterialId
+                          ? `/materials/${row.rawMaterialId}`
+                          : `/products/${row.productId}`
+                      }
+                    >
                       {row.name}
                     </TableLink>
                   </Td>

@@ -4,12 +4,17 @@ import { d, money, qty as toQty, cost as toCost, ZERO, type Dec } from "@/lib/de
 import { convertQuantity, convertUnitPrice, isConvertible, unitLabel } from "@/lib/units";
 import { prisma } from "@/lib/prisma";
 import { writeAudit } from "@/lib/audit";
-import { applyMovement } from "./inventory";
+import { applyMovement, subjectOf, type StockSubject } from "./inventory";
 import { recordMoneyTransaction } from "./money";
 import { nextDocumentNumber } from "./numbering";
 
+/**
+ * Худалдан авалтын мөр. Түүхий эд ЭСВЭЛ RESALE бүтээгдэхүүн —
+ * rawMaterialId / productId-ийн ЯГ НЭГИЙГ өгнө.
+ */
 export type PurchaseLineInput = {
-  rawMaterialId: string;
+  rawMaterialId?: string | null;
+  productId?: string | null;
   quantity: string | number;
   unit: Unit;
   unitPrice: string | number;
@@ -36,13 +41,20 @@ export async function postPurchase(input: PostPurchaseInput): Promise<{ id: stri
   }
 
   return prisma.$transaction(async (tx) => {
-    const materials = await tx.rawMaterial.findMany({
-      where: { id: { in: input.items.map((i) => i.rawMaterialId) } },
-    });
-    const byId = new Map(materials.map((m) => [m.id, m]));
+    const materialIds = input.items.flatMap((i) => (i.rawMaterialId ? [i.rawMaterialId] : []));
+    const productIds = input.items.flatMap((i) => (i.productId ? [i.productId] : []));
+
+    const [materials, products] = await Promise.all([
+      tx.rawMaterial.findMany({ where: { id: { in: materialIds } } }),
+      tx.product.findMany({ where: { id: { in: productIds } } }),
+    ]);
+    const materialById = new Map(materials.map((m) => [m.id, m]));
+    const productById = new Map(products.map((p) => [p.id, p]));
 
     type Prepared = {
-      rawMaterialId: string;
+      subject: StockSubject;
+      rawMaterialId: string | null;
+      productId: string | null;
       quantity: Dec;
       unit: Unit;
       unitPrice: Dec;
@@ -52,32 +64,55 @@ export async function postPurchase(input: PostPurchaseInput): Promise<{ id: stri
     };
 
     const prepared: Prepared[] = input.items.map((item) => {
-      const material = byId.get(item.rawMaterialId);
-      if (!material) throw new Error("Бараа материал олдсонгүй.");
-      if (!material.isActive) throw new Error(`"${material.name}" идэвхгүй байна.`);
+      if (Boolean(item.rawMaterialId) === Boolean(item.productId)) {
+        throw new Error("Мөр бүр яг нэг бараа буюу бүтээгдэхүүнтэй байх ёстой.");
+      }
+
+      // Хоёр төрлийн субьектийг нэгэн ижил байдлаар шалгана.
+      let target: { id: string; name: string; unit: Unit; isActive: boolean };
+      if (item.rawMaterialId) {
+        const material = materialById.get(item.rawMaterialId);
+        if (!material) throw new Error("Бараа материал олдсонгүй.");
+        target = material;
+      } else {
+        const product = productById.get(item.productId!);
+        if (!product) throw new Error("Бүтээгдэхүүн олдсонгүй.");
+        if (product.productType !== "RESALE") {
+          throw new Error(
+            `"${product.name}" нь үйлдвэрлэдэг бүтээгдэхүүн тул худалдан авалтад бүртгэхгүй.`,
+          );
+        }
+        target = product;
+      }
+      if (!target.isActive) throw new Error(`"${target.name}" идэвхгүй байна.`);
 
       const quantity = toQty(item.quantity);
       const unitPrice = toCost(item.unitPrice);
       if (quantity.lessThanOrEqualTo(0)) {
-        throw new Error(`"${material.name}" — тоо хэмжээ 0-ээс их байх ёстой.`);
+        throw new Error(`"${target.name}" — тоо хэмжээ 0-ээс их байх ёстой.`);
       }
       if (unitPrice.lessThan(0)) {
-        throw new Error(`"${material.name}" — нэгж үнэ сөрөг байж болохгүй.`);
+        throw new Error(`"${target.name}" — нэгж үнэ сөрөг байж болохгүй.`);
       }
-      if (!isConvertible(item.unit, material.unit)) {
+      if (!isConvertible(item.unit, target.unit)) {
         throw new Error(
-          `"${material.name}" — ${unitLabel(item.unit)} нэгжийг ${unitLabel(material.unit)} рүү хөрвүүлэх боломжгүй.`,
+          `"${target.name}" — ${unitLabel(item.unit)} нэгжийг ${unitLabel(target.unit)} рүү хөрвүүлэх боломжгүй.`,
         );
       }
 
+      const rawMaterialId = item.rawMaterialId ?? null;
+      const productId = item.productId ?? null;
+
       return {
-        rawMaterialId: material.id,
+        subject: subjectOf({ rawMaterialId, productId }),
+        rawMaterialId,
+        productId,
         quantity,
         unit: item.unit,
         unitPrice,
         subtotal: money(quantity.times(unitPrice)),
-        baseQuantity: toQty(convertQuantity(quantity, item.unit, material.unit)),
-        baseUnitCost: toCost(convertUnitPrice(unitPrice, item.unit, material.unit)),
+        baseQuantity: toQty(convertQuantity(quantity, item.unit, target.unit)),
+        baseUnitCost: toCost(convertUnitPrice(unitPrice, item.unit, target.unit)),
       };
     });
 
@@ -97,6 +132,7 @@ export async function postPurchase(input: PostPurchaseInput): Promise<{ id: stri
         items: {
           create: prepared.map((p) => ({
             rawMaterialId: p.rawMaterialId,
+            productId: p.productId,
             quantity: p.quantity,
             unit: p.unit,
             unitPrice: p.unitPrice,
@@ -112,7 +148,7 @@ export async function postPurchase(input: PostPurchaseInput): Promise<{ id: stri
     // Нөөц нэмэх + жигнэсэн дундаж өртөг шинэчлэх.
     for (const line of prepared) {
       await applyMovement(tx, {
-        rawMaterialId: line.rawMaterialId,
+        subject: line.subject,
         movementType: "PURCHASE_IN",
         quantity: line.baseQuantity,
         costPolicy: { mode: "AT_COST", unitCost: line.baseUnitCost },
@@ -182,7 +218,7 @@ export async function cancelPurchase(params: {
 
     for (const item of purchase.items) {
       await applyMovement(tx, {
-        rawMaterialId: item.rawMaterialId,
+        subject: subjectOf(item),
         movementType: "CORRECTION_OUT",
         quantity: item.baseQuantity,
         costPolicy: { mode: "REMOVE_AT_COST", unitCost: item.baseUnitCost },

@@ -9,6 +9,7 @@ import { requirePageUser } from "@/lib/auth/guards";
 import { formatDate, formatDateTime, formatMoney, formatMoneyPrecise, formatQty } from "@/lib/format";
 import { prisma } from "@/lib/prisma";
 import { unitLabel } from "@/lib/units";
+import { subjectDisplay } from "@/lib/stock-subject";
 import { MOVEMENT_TYPE_LABEL } from "@/lib/movements";
 import { PURCHASE_PAYMENT_LABEL } from "@/server/services/purchases";
 import { cancelPurchaseAction } from "../actions";
@@ -24,14 +25,17 @@ export default async function PurchaseDetailPage({ params }: { params: Params })
     include: {
       supplier: true,
       createdBy: { select: { name: true } },
-      items: { include: { rawMaterial: true } },
+      items: { include: { rawMaterial: true, product: true } },
     },
   });
   if (!purchase) notFound();
 
   const movements = await prisma.inventoryMovement.findMany({
     where: { referenceId: purchase.id, referenceType: { in: ["PURCHASE", "PURCHASE_CANCEL"] } },
-    include: { rawMaterial: { select: { name: true, unit: true } } },
+    include: {
+      rawMaterial: { select: { name: true, unit: true } },
+      product: { select: { name: true, unit: true } },
+    },
     orderBy: { createdAt: "asc" },
   });
 
@@ -82,12 +86,16 @@ export default async function PurchaseDetailPage({ params }: { params: Params })
             </tr>
           </thead>
           <tbody>
-            {purchase.items.map((item) => (
+            {purchase.items.map((item) => {
+              const subject = subjectDisplay(item);
+              return (
               <Tr key={item.id}>
                 <Td>
-                  <TableLink href={`/materials/${item.rawMaterialId}`}>
-                    {item.rawMaterial.name}
-                  </TableLink>
+                  {subject.href ? (
+                    <TableLink href={subject.href}>{subject.name}</TableLink>
+                  ) : (
+                    subject.name
+                  )}
                 </Td>
                 <Td align="right">
                   {formatQty(item.quantity)} {unitLabel(item.unit)}
@@ -97,11 +105,13 @@ export default async function PurchaseDetailPage({ params }: { params: Params })
                   {formatMoney(item.subtotal)}
                 </Td>
                 <Td align="right" className="text-ink-500">
-                  {formatQty(item.baseQuantity)} {unitLabel(item.rawMaterial.unit)} ·{" "}
+                  {formatQty(item.baseQuantity)}{" "}
+                  {subject.unit ? unitLabel(subject.unit) : ""} ·{" "}
                   {formatMoneyPrecise(item.baseUnitCost)}
                 </Td>
               </Tr>
-            ))}
+              );
+            })}
             <TotalRow>
               <Td colSpan={3}>Нийт</Td>
               <Td align="right">{formatMoney(purchase.totalAmount)}</Td>
@@ -128,7 +138,7 @@ export default async function PurchaseDetailPage({ params }: { params: Params })
             {movements.map((movement) => (
               <Tr key={movement.id}>
                 <Td className="whitespace-nowrap">{formatDateTime(movement.createdAt)}</Td>
-                <Td>{movement.rawMaterial.name}</Td>
+                <Td>{subjectDisplay(movement).name}</Td>
                 <Td>{MOVEMENT_TYPE_LABEL[movement.movementType]}</Td>
                 <Td align="right">{formatQty(movement.quantity)}</Td>
                 <Td align="right">{formatMoneyPrecise(movement.unitCost)}</Td>

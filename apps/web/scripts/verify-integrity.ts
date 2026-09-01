@@ -16,18 +16,65 @@ function check(name: string, ok: boolean, detail = "") {
 }
 
 async function main() {
-  // 1. Дэвтэр ↔ үлдэгдэл нийцэл
+  // 1. Дэвтэр ↔ үлдэгдэл нийцэл (түүхий эд)
   const materials = await prisma.rawMaterial.findMany();
   const grouped = await prisma.inventoryMovement.groupBy({
     by: ["rawMaterialId"],
     _sum: { quantity: true },
   });
-  const sums = new Map(grouped.map((g) => [g.rawMaterialId, new D(g._sum.quantity ?? 0)]));
+  const sums = new Map(
+    grouped.filter((g) => g.rawMaterialId).map((g) => [g.rawMaterialId!, new D(g._sum.quantity ?? 0)]),
+  );
   const mismatched = materials.filter(
     (m) => !new D(m.quantity).equals(sums.get(m.id) ?? new D(0)),
   );
   check("Нөөцийн дэвтэр ба үлдэгдэл тохирч байна", mismatched.length === 0,
     mismatched.map((m) => `${m.name}: ${m.quantity} vs ${sums.get(m.id)}`).join(", "));
+
+  // 1b. Дэвтэр ↔ үлдэгдэл нийцэл (RESALE бүтээгдэхүүн)
+  //     MANUFACTURED бүтээгдэхүүн өөрийн нөөцгүй тул дэвтэрт орохгүй.
+  const resaleProducts = await prisma.product.findMany({ where: { productType: "RESALE" } });
+  const productGrouped = await prisma.inventoryMovement.groupBy({
+    by: ["productId"],
+    _sum: { quantity: true },
+  });
+  const productSums = new Map(
+    productGrouped.filter((g) => g.productId).map((g) => [g.productId!, new D(g._sum.quantity ?? 0)]),
+  );
+  const productMismatched = resaleProducts.filter(
+    (p) => !new D(p.quantity).equals(productSums.get(p.id) ?? new D(0)),
+  );
+  check(
+    "Дамжуулан борлуулах бүтээгдэхүүний дэвтэр ба үлдэгдэл тохирч байна",
+    productMismatched.length === 0,
+    `${resaleProducts.length} бүтээгдэхүүн шалгав` +
+      (productMismatched.length
+        ? "; " + productMismatched.map((p) => `${p.name}: ${p.quantity}`).join(", ")
+        : ""),
+  );
+
+  // 1c. Үйлдвэрлэдэг бүтээгдэхүүн дэвтэрт орсон эсэх (орох ёсгүй)
+  const manufacturedInLedger = await prisma.inventoryMovement.count({
+    where: { product: { productType: "MANUFACTURED" } },
+  });
+  check(
+    "Үйлдвэрлэдэг бүтээгдэхүүн нөөцийн дэвтэрт ороогүй",
+    manufacturedInLedger === 0,
+    `${manufacturedInLedger} мөр`,
+  );
+
+  // 1d. Дэвтрийн мөр бүр яг нэг субьекттэй (DB CHECK-ийн давхар баталгаа)
+  const orphanMovements = await prisma.inventoryMovement.count({
+    where: { rawMaterialId: null, productId: null },
+  });
+  const doubleMovements = await prisma.inventoryMovement.count({
+    where: { NOT: { rawMaterialId: null }, productId: { not: null } },
+  });
+  check(
+    "Дэвтрийн мөр бүр яг нэг субьекттэй",
+    orphanMovements === 0 && doubleMovements === 0,
+    `хоосон ${orphanMovements}, давхар ${doubleMovements}`,
+  );
 
   // 2. Сөрөг үлдэгдэлгүй
   const negative = materials.filter((m) => new D(m.quantity).lessThan(0));

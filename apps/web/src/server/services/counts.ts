@@ -2,7 +2,7 @@ import "server-only";
 import { d, money, qty as toQty, ZERO, type Dec } from "@/lib/decimal";
 import { prisma } from "@/lib/prisma";
 import { writeAudit } from "@/lib/audit";
-import { applyMovement, lockRawMaterial } from "./inventory";
+import { applyMovement, lockRawMaterial, rawMaterialSubject } from "./inventory";
 import { nextDocumentNumber } from "./numbering";
 
 export type CountLineInput = {
@@ -141,7 +141,7 @@ export async function finalizeInventoryCount(params: {
       if (difference.isZero()) continue;
 
       await applyMovement(tx, {
-        rawMaterialId: item.rawMaterialId,
+        subject: rawMaterialSubject(item.rawMaterialId),
         movementType: difference.greaterThan(0) ? "INVENTORY_COUNT_GAIN" : "INVENTORY_COUNT_LOSS",
         quantity: difference.abs(),
         costPolicy: { mode: "AVERAGE" },

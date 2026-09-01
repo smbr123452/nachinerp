@@ -4,7 +4,7 @@ import { convertQuantity, unitLabel } from "@/lib/units";
 import { prisma } from "@/lib/prisma";
 import type { Tx } from "@/lib/prisma";
 import { writeAudit } from "@/lib/audit";
-import { applyMovement } from "./inventory";
+import { applyMovement, rawMaterialSubject, subjectOf } from "./inventory";
 import { recordMoneyTransaction } from "./money";
 import { nextDocumentNumber } from "./numbering";
 
@@ -248,7 +248,7 @@ export async function postSalesBatch(
     for (const line of consumption) {
       if (line.baseQuantity.lessThanOrEqualTo(0)) continue;
       await applyMovement(tx, {
-        rawMaterialId: line.rawMaterialId,
+        subject: rawMaterialSubject(line.rawMaterialId),
         movementType: "SALE_CONSUMPTION_OUT",
         quantity: line.baseQuantity,
         costPolicy: { mode: "AVERAGE" },
@@ -327,7 +327,7 @@ export async function cancelSaleBatch(params: {
 
     for (const movement of movements) {
       await applyMovement(tx, {
-        rawMaterialId: movement.rawMaterialId,
+        subject: subjectOf(movement),
         movementType: "CORRECTION_IN",
         quantity: d(movement.quantity).abs(),
         // Хэрэглэсэн үеийн өртгөөр буцаана — түүхэн өртөг өөрчлөгдөхгүй.

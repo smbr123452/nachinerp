@@ -198,7 +198,10 @@ export async function getExpenseReport(range: DateRange): Promise<ExpenseReportR
 // E — Худалдан авалтын тайлан ---------------------------------------------
 
 export type PurchaseReportRow = {
-  rawMaterialId: string;
+  /** Түүхий эд бол "rm:<id>", RESALE бүтээгдэхүүн бол "pr:<id>". */
+  key: string;
+  rawMaterialId: string | null;
+  productId: string | null;
   name: string;
   unit: string;
   quantity: Dec;
@@ -209,14 +212,21 @@ export type PurchaseReportRow = {
 export async function getPurchaseReport(range: DateRange): Promise<PurchaseReportRow[]> {
   const items = await prisma.purchaseItem.findMany({
     where: { purchase: { status: "POSTED", date: { gte: range.from, lt: range.to } } },
-    include: { rawMaterial: { select: { id: true, name: true, unit: true } } },
+    include: {
+      rawMaterial: { select: { id: true, name: true, unit: true } },
+      product: { select: { id: true, name: true, unit: true } },
+    },
   });
 
   const { unitLabel } = await import("@/lib/units");
   const map = new Map<string, PurchaseReportRow>();
 
   for (const item of items) {
-    const key = item.rawMaterialId;
+    // Мөр бүр яг нэг субьекттэй (DB CHECK). Аль нь ч байхгүй мөрийг алгасна.
+    const target = item.rawMaterial ?? item.product;
+    if (!target) continue;
+
+    const key = item.rawMaterialId ? `rm:${item.rawMaterialId}` : `pr:${item.productId}`;
     const existing = map.get(key);
     const quantity = d(item.baseQuantity);
     const amount = d(item.subtotal);
@@ -225,9 +235,11 @@ export async function getPurchaseReport(range: DateRange): Promise<PurchaseRepor
       existing.amount = existing.amount.plus(amount);
     } else {
       map.set(key, {
-        rawMaterialId: key,
-        name: item.rawMaterial.name,
-        unit: unitLabel(item.rawMaterial.unit),
+        key,
+        rawMaterialId: item.rawMaterialId,
+        productId: item.productId,
+        name: target.name,
+        unit: unitLabel(target.unit),
         quantity,
         amount,
         averagePrice: ZERO,
@@ -348,6 +360,7 @@ export async function getPriceHistoryReport(
     },
     include: {
       rawMaterial: { select: { id: true, name: true, unit: true } },
+      product: { select: { id: true, name: true, unit: true } },
       purchase: { select: { id: true, purchaseNo: true, date: true } },
     },
     orderBy: [{ purchase: { date: "desc" } }],
@@ -356,15 +369,21 @@ export async function getPriceHistoryReport(
 
   const { unitLabel } = await import("@/lib/units");
 
-  return items.map((item) => ({
-    id: item.id,
-    date: item.purchase.date,
-    purchaseId: item.purchase.id,
-    purchaseNo: item.purchase.purchaseNo,
-    materialId: item.rawMaterial.id,
-    materialName: item.rawMaterial.name,
-    unit: unitLabel(item.rawMaterial.unit),
-    unitCost: d(item.baseUnitCost),
-    quantity: d(item.baseQuantity),
-  }));
+  return items.flatMap((item) => {
+    const target = item.rawMaterial ?? item.product;
+    if (!target) return [];
+    return [
+      {
+        id: item.id,
+        date: item.purchase.date,
+        purchaseId: item.purchase.id,
+        purchaseNo: item.purchase.purchaseNo,
+        materialId: target.id,
+        materialName: target.name,
+        unit: unitLabel(target.unit),
+        unitCost: d(item.baseUnitCost),
+        quantity: d(item.baseQuantity),
+      },
+    ];
+  });
 }
