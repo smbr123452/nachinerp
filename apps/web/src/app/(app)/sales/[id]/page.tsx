@@ -1,11 +1,11 @@
-import Link from "next/link";
 import { notFound } from "next/navigation";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { Alert } from "@/components/ui/Alert";
 import { StatusBadge } from "@/components/ui/Badge";
-import { Card, CardHeader, StatCard } from "@/components/ui/Card";
+import { Card, CardHeader } from "@/components/ui/Card";
+import { StatCard } from "@/components/ui/StatCard";
 import { CancelDocumentButton } from "@/components/ui/ConfirmAction";
-import { Table, Td, Th } from "@/components/ui/Table";
+import { Table, TableLink, Td, Th, TotalRow, Tr } from "@/components/ui/Table";
 import { requirePageUser } from "@/lib/auth/guards";
 import { d, sum, ZERO } from "@/lib/decimal";
 import { formatDate, formatDateTime, formatMoney, formatMoneyPrecise, formatPercent, formatQty } from "@/lib/format";
@@ -43,17 +43,10 @@ export default async function SaleDetailPage({ params }: { params: Params }) {
   return (
     <>
       <PageHeader
+        backHref="/sales"
         title={`Борлуулалт ${batch.batchNo}`}
         description={`${formatDate(batch.date)} · ${batch.items.length} нэр төрөл`}
-        action={
-          <>
-            <Link
-              href="/sales"
-              className="inline-flex h-11 items-center rounded-lg border border-slate-300 bg-white px-4 text-sm font-medium text-slate-700 hover:bg-slate-50"
-            >
-              Буцах
-            </Link>
-            {batch.status === "POSTED" ? (
+        action={batch.status === "POSTED" ? (
               <CancelDocumentButton
                 id={batch.id}
                 action={cancelSaleBatchAction}
@@ -61,14 +54,12 @@ export default async function SaleDetailPage({ params }: { params: Params }) {
                 description="Хэрэглэсэн материал тухайн үеийн өртгөөр буцаж орлогодогдоно."
               />
             ) : null}
-          </>
-        }
       />
 
       <div className="mb-4 flex flex-wrap items-center gap-3">
         <StatusBadge status={batch.status} />
-        <span className="text-sm text-slate-500">Бүртгэсэн: {batch.createdBy.name}</span>
-        <span className="text-sm text-slate-500">{formatDateTime(batch.createdAt)}</span>
+        <span className="text-sm text-ink-500">Бүртгэсэн: {batch.createdBy.name}</span>
+        <span className="text-sm text-ink-500">{formatDateTime(batch.createdAt)}</span>
       </div>
 
       {batch.status === "CANCELLED" ? (
@@ -100,31 +91,31 @@ export default async function SaleDetailPage({ params }: { params: Params }) {
             </thead>
             <tbody>
               {batch.items.map((item) => (
-                <tr key={item.id}>
+                <Tr key={item.id}>
                   <Td>
-                    <Link href={`/products/${item.productId}`} className="text-brand-600 hover:underline">
+                    <TableLink href={`/products/${item.productId}`}>
                       {item.product.name}
-                    </Link>
+                    </TableLink>
                   </Td>
                   <Td align="right">{formatQty(item.quantity)}</Td>
                   <Td align="right">{formatMoney(item.unitPrice)}</Td>
                   <Td align="right" className="font-medium">
                     {formatMoney(item.total)}
                   </Td>
-                  <Td align="right" className="text-slate-500">
+                  <Td align="right" className="text-ink-500">
                     {formatMoneyPrecise(item.unitCost)}
                   </Td>
                   <Td align="right" className="text-emerald-600">
                     {formatMoney(d(item.total).minus(d(item.totalCost)))}
                   </Td>
-                </tr>
+                </Tr>
               ))}
-              <tr className="bg-slate-50 font-semibold">
+              <TotalRow>
                 <Td colSpan={3}>Нийт</Td>
                 <Td align="right">{formatMoney(batch.totalRevenue)}</Td>
                 <Td />
                 <Td align="right">{formatMoney(batch.grossProfit)}</Td>
-              </tr>
+              </TotalRow>
             </tbody>
           </Table>
         </Card>
@@ -133,30 +124,30 @@ export default async function SaleDetailPage({ params }: { params: Params }) {
           <CardHeader title="Төлбөрийн хуваарилалт" />
           <Table>
             <tbody>
-              <tr>
-                <Td className="text-slate-500">Бэлэн (касс)</Td>
+              <Tr>
+                <Td className="text-ink-500">Бэлэн (касс)</Td>
                 <Td align="right">{formatMoney(batch.cashAmount)}</Td>
-              </tr>
-              <tr>
-                <Td className="text-slate-500">Карт</Td>
+              </Tr>
+              <Tr>
+                <Td className="text-ink-500">Карт</Td>
                 <Td align="right">{formatMoney(batch.cardAmount)}</Td>
-              </tr>
-              <tr>
-                <Td className="text-slate-500">QR</Td>
+              </Tr>
+              <Tr>
+                <Td className="text-ink-500">QR</Td>
                 <Td align="right">{formatMoney(batch.qrAmount)}</Td>
-              </tr>
-              <tr>
-                <Td className="text-slate-500">Дансаар</Td>
+              </Tr>
+              <Tr>
+                <Td className="text-ink-500">Дансаар</Td>
                 <Td align="right">{formatMoney(batch.bankTransferAmount)}</Td>
-              </tr>
-              <tr>
-                <Td className="text-slate-500">Бусад</Td>
+              </Tr>
+              <Tr>
+                <Td className="text-ink-500">Бусад</Td>
                 <Td align="right">{formatMoney(batch.otherAmount)}</Td>
-              </tr>
-              <tr className="bg-slate-50 font-semibold">
+              </Tr>
+              <TotalRow>
                 <Td>Банкинд орсон</Td>
                 <Td align="right">{formatMoney(bankTotal)}</Td>
-              </tr>
+              </TotalRow>
             </tbody>
           </Table>
         </Card>
@@ -177,16 +168,16 @@ export default async function SaleDetailPage({ params }: { params: Params }) {
           </thead>
           <tbody>
             {movements.map((movement) => (
-              <tr key={movement.id}>
+              <Tr key={movement.id}>
                 <Td>{movement.rawMaterial.name}</Td>
-                <Td className="text-slate-500">{MOVEMENT_TYPE_LABEL[movement.movementType]}</Td>
+                <Td className="text-ink-500">{MOVEMENT_TYPE_LABEL[movement.movementType]}</Td>
                 <Td align="right">
                   {formatQty(movement.quantity)} {unitLabel(movement.rawMaterial.unit)}
                 </Td>
                 <Td align="right">{formatMoneyPrecise(movement.unitCost)}</Td>
                 <Td align="right">{formatMoney(movement.totalCost)}</Td>
                 <Td align="right">{formatQty(movement.balanceAfter)}</Td>
-              </tr>
+              </Tr>
             ))}
           </tbody>
         </Table>

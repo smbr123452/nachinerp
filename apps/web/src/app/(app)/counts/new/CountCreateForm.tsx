@@ -84,7 +84,7 @@ export function CountCreateForm({ materials, today }: { materials: CountMaterial
             {filtered.map((material) => (
               <label
                 key={material.id}
-                className="flex cursor-pointer items-center gap-2 rounded-lg border border-slate-200 px-3 py-2 text-sm hover:bg-slate-50"
+                className="flex cursor-pointer items-center gap-2 rounded-lg border border-ink-200 px-3 py-2 text-sm hover:bg-ink-50"
               >
                 <input
                   type="checkbox"
@@ -92,11 +92,11 @@ export function CountCreateForm({ materials, today }: { materials: CountMaterial
                   value={material.id}
                   checked={selected.has(material.id)}
                   onChange={() => toggle(material.id)}
-                  className="h-4 w-4 rounded border-slate-300 text-brand-600 focus:ring-brand-500"
+                  className="h-4 w-4 rounded border-ink-300 text-brand-600 focus:ring-brand-500"
                 />
                 <span className="min-w-0 flex-1 truncate">
                   {material.name}
-                  <span className="ml-1 text-xs text-slate-400">
+                  <span className="ml-1 text-xs text-ink-400">
                     {formatQty(material.quantity)} {material.unit}
                   </span>
                 </span>
@@ -106,7 +106,10 @@ export function CountCreateForm({ materials, today }: { materials: CountMaterial
         </CardBody>
       </Card>
 
-      <div className="flex justify-end">
+      <div className="flex flex-wrap items-center justify-between gap-3 rounded-card border border-brand-200 bg-brand-50/50 px-5 py-4 shadow-card">
+        <p className="text-[13px] text-ink-600">
+          Сонгосон материалын системийн үлдэгдэл тухайн үедээ хадгалагдана.
+        </p>
         <SubmitButton size="lg" disabled={selected.size === 0} pendingText="Үүсгэж байна...">
           Тооллого эхлүүлэх
         </SubmitButton>

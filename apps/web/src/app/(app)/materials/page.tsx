@@ -1,10 +1,9 @@
-import Link from "next/link";
 import { Prisma } from "@prisma/client";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { Alert } from "@/components/ui/Alert";
 import { Badge } from "@/components/ui/Badge";
 import { Card } from "@/components/ui/Card";
-import { EmptyRow, Table, Td, Th } from "@/components/ui/Table";
+import { EmptyRow, MonoText, Table, TableLink, Td, Th, Tr } from "@/components/ui/Table";
 import { FilterBar, FilterSelect, SearchInput } from "@/components/ui/SearchFilters";
 import { requirePageUser } from "@/lib/auth/guards";
 import { d, sum } from "@/lib/decimal";
@@ -111,23 +110,23 @@ export default async function MaterialsPage({ searchParams }: { searchParams: Se
               <EmptyRow colSpan={8}>Бараа материал олдсонгүй.</EmptyRow>
             ) : (
               filtered.map(({ material, value, isLow }) => (
-                <tr key={material.id} className="hover:bg-slate-50">
-                  <Td className="font-mono text-xs">{material.sku}</Td>
+                <Tr key={material.id} tone={isLow ? "warning" : undefined}>
+                  <Td><MonoText>{material.sku}</MonoText></Td>
                   <Td>
-                    <Link href={`/materials/${material.id}`} className="font-medium text-brand-600 hover:underline">
+                    <TableLink href={`/materials/${material.id}`} strong>
                       {material.name}
-                    </Link>
+                    </TableLink>
                     <div className="mt-1 flex gap-1">
                       {isLow ? <Badge tone="warning">Дутагдалтай</Badge> : null}
                       {!material.isActive ? <Badge tone="neutral">Идэвхгүй</Badge> : null}
                     </div>
                   </Td>
-                  <Td className="text-slate-500">{material.category?.name ?? "-"}</Td>
-                  <Td align="right">
+                  <Td className="text-ink-500">{material.category?.name ?? "-"}</Td>
+                  <Td align="right" className={isLow ? "font-medium text-amber-700" : ""}>
                     {formatQty(material.quantity)} {unitLabel(material.unit)}
                   </Td>
-                  <Td align="right" className="text-slate-500">
-                    {formatQty(material.minimumStock)}
+                  <Td align="right" muted>
+                    {formatQty(material.minimumStock)} {unitLabel(material.unit)}
                   </Td>
                   <Td align="right">{formatMoneyPrecise(material.averageCost)}</Td>
                   <Td align="right" className="font-medium">
@@ -148,7 +147,7 @@ export default async function MaterialsPage({ searchParams }: { searchParams: Se
                       }}
                     />
                   </Td>
-                </tr>
+                </Tr>
               ))
             )}
           </tbody>

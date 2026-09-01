@@ -2,26 +2,80 @@
 @tailwind components;
 @tailwind utilities;
 
-:root {
-  color-scheme: light;
+@layer base {
+  :root {
+    color-scheme: light;
+  }
+
+  html,
+  body {
+    height: 100%;
+  }
+
+  body {
+    @apply bg-ink-50 text-ink-800 antialiased;
+    font-feature-settings: "cv02", "cv03", "cv04";
+  }
+
+  /* Гарчгийн үсгийн зай. Өнгийг эндээс тулгахгүй — өнгөт дэвсгэр дээрх
+     гарчиг (жишээ нь нэвтрэх хуудас) өөрийн өнгөө хадгална. */
+  h1,
+  h2,
+  h3 {
+    @apply tracking-[-0.01em];
+  }
+
+  /* Товч, холбоос дарагдахаар нь илэрхий байлгах */
+  button:not(:disabled),
+  [role="button"]:not([aria-disabled="true"]) {
+    cursor: pointer;
+  }
+
+  /* Гараар шилжихэд фокус тод харагдана */
+  :focus-visible {
+    @apply outline-none ring-2 ring-brand-500/40 ring-offset-1 ring-offset-white;
+  }
 }
 
-html,
-body {
-  height: 100%;
+@layer components {
+  /* Мөнгө, тоо хэмжээг баганаар эгнүүлэх */
+  .tabular {
+    font-variant-numeric: tabular-nums;
+    font-feature-settings: "tnum";
+  }
+
+  /* Хүснэгт доторх урт агуулгыг тасалж харуулах */
+  .truncate-cell {
+    @apply block max-w-[22rem] truncate;
+  }
 }
 
-body {
-  @apply bg-slate-50 text-slate-900 antialiased;
-}
+@layer utilities {
+  .scrollbar-slim {
+    scrollbar-width: thin;
+    scrollbar-color: theme("colors.ink.300") transparent;
+  }
 
-/* Тоон утгыг хүснэгтэд эгнүүлэхэд */
-.tabular {
-  font-variant-numeric: tabular-nums;
+  .scrollbar-slim::-webkit-scrollbar {
+    height: 8px;
+    width: 8px;
+  }
+
+  .scrollbar-slim::-webkit-scrollbar-thumb {
+    @apply rounded-full bg-ink-300;
+  }
+
+  .scrollbar-slim::-webkit-scrollbar-track {
+    background: transparent;
+  }
 }
 
 @media print {
   .no-print {
     display: none !important;
+  }
+
+  body {
+    @apply bg-white;
   }
 }

@@ -3,9 +3,10 @@
 import { useActionState, useState } from "react";
 import { Alert } from "@/components/ui/Alert";
 import { Button, SubmitButton } from "@/components/ui/Button";
-import { Card, CardBody, CardHeader } from "@/components/ui/Card";
-import { Modal } from "@/components/ui/Modal";
-import { Table, Td, Th } from "@/components/ui/Table";
+import { Card, CardFooter, CardHeader } from "@/components/ui/Card";
+import { NumberInput } from "@/components/ui/Field";
+import { Modal, ModalActions } from "@/components/ui/Modal";
+import { Table, Td, Th, TotalRow } from "@/components/ui/Table";
 import { IDLE, type ActionState } from "@/lib/action-state";
 import { formatMoney, formatQty } from "@/lib/format";
 import { cn } from "@/lib/cn";
@@ -83,17 +84,17 @@ export function CountSheet({ countId, rows: initialRows }: { countId: string; ro
                 <tr key={row.rawMaterialId} className={cn(hasDiff && "bg-amber-50")}>
                   <Td>
                     <span className="font-medium">{row.name}</span>
-                    <span className="ml-2 font-mono text-xs text-slate-400">{row.sku}</span>
+                    <span className="ml-2 font-mono text-xs text-ink-400">{row.sku}</span>
                   </Td>
                   <Td align="right">
                     {formatQty(row.systemQuantity)} {row.unit}
                   </Td>
                   <Td align="right">
-                    <input
+                    <NumberInput
                       value={row.countedQuantity}
                       onChange={(event) => update(row.rawMaterialId, event.target.value)}
-                      inputMode="decimal"
-                      className="tabular w-32 rounded-lg border border-slate-300 px-3 py-2 text-right text-sm focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-100"
+                      aria-label={`${row.name} — тоолсон тоо`}
+                      className="w-32"
                     />
                   </Td>
                   <Td
@@ -106,7 +107,7 @@ export function CountSheet({ countId, rows: initialRows }: { countId: string; ro
                     {row.difference > 0 ? "+" : ""}
                     {formatQty(row.difference)}
                   </Td>
-                  <Td align="right" className="text-slate-500">
+                  <Td align="right" className="text-ink-500">
                     {formatMoney(row.unitCost)}
                   </Td>
                   <Td align="right" className={row.variance < 0 ? "text-red-600" : ""}>
@@ -115,15 +116,15 @@ export function CountSheet({ countId, rows: initialRows }: { countId: string; ro
                 </tr>
               );
             })}
-            <tr className="bg-slate-50 font-semibold">
+            <TotalRow>
               <Td colSpan={5}>Нийт зөрүүний дүн</Td>
               <Td align="right" className={totalVariance < 0 ? "text-red-600" : "text-emerald-600"}>
                 {formatMoney(totalVariance)}
               </Td>
-            </tr>
+            </TotalRow>
           </tbody>
         </Table>
-        <CardBody className="flex flex-wrap justify-end gap-2 border-t border-slate-200">
+        <CardFooter className="flex flex-wrap justify-end gap-2">
           <form action={saveAction}>
             <input type="hidden" name="countId" value={countId} />
             {hiddenInputs}
@@ -132,7 +133,7 @@ export function CountSheet({ countId, rows: initialRows }: { countId: string; ro
             </SubmitButton>
           </form>
           <Button onClick={() => setConfirmOpen(true)}>Тооллого баталгаажуулах</Button>
-        </CardBody>
+        </CardFooter>
       </Card>
 
       <Modal
@@ -150,13 +151,15 @@ export function CountSheet({ countId, rows: initialRows }: { countId: string; ro
               Нийт зөрүүний дүн: <strong>{formatMoney(totalVariance)}</strong>
             </p>
           </Alert>
-          <form action={finalizeAction} className="flex justify-end gap-2">
+          <form action={finalizeAction}>
             <input type="hidden" name="countId" value={countId} />
             {hiddenInputs}
-            <Button variant="secondary" onClick={() => setConfirmOpen(false)}>
-              Болих
-            </Button>
-            <SubmitButton pendingText="Баталгаажуулж байна...">Баталгаажуулах</SubmitButton>
+            <ModalActions>
+              <Button variant="secondary" onClick={() => setConfirmOpen(false)}>
+                Болих
+              </Button>
+              <SubmitButton pendingText="Баталгаажуулж байна...">Баталгаажуулах</SubmitButton>
+            </ModalActions>
           </form>
         </div>
       </Modal>

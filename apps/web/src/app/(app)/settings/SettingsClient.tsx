@@ -2,10 +2,11 @@
 
 import { useActionState, useEffect, useState } from "react";
 import type { Role } from "@prisma/client";
+import { Plus } from "lucide-react";
 import { Alert } from "@/components/ui/Alert";
 import { Button, SubmitButton } from "@/components/ui/Button";
 import { Checkbox, Field, Input, Select } from "@/components/ui/Field";
-import { Modal } from "@/components/ui/Modal";
+import { Modal, ModalActions } from "@/components/ui/Modal";
 import { IDLE, type ActionState } from "@/lib/action-state";
 import { createUserAction, resetPasswordAction, updateUserAction } from "./actions";
 
@@ -19,8 +20,10 @@ export function NewUserButton() {
 
   return (
     <>
-      <Button onClick={() => setOpen(true)}>+ Хэрэглэгч нэмэх</Button>
-      <Modal open={open} onClose={() => setOpen(false)} title="Шинэ хэрэглэгч" wide>
+      <Button icon={<Plus />} onClick={() => setOpen(true)}>
+        Хэрэглэгч нэмэх
+      </Button>
+      <Modal open={open} onClose={() => setOpen(false)} title="Шинэ хэрэглэгч" size="lg">
         <form action={formAction} className="space-y-4">
           {state.status === "error" && state.message ? <Alert tone="error">{state.message}</Alert> : null}
           <div className="grid gap-4 sm:grid-cols-2">
@@ -46,12 +49,12 @@ export function NewUserButton() {
               <Input id="user-password" name="password" type="password" required autoComplete="new-password" />
             </Field>
           </div>
-          <div className="flex justify-end gap-2">
+          <ModalActions>
             <Button variant="secondary" onClick={() => setOpen(false)}>
               Болих
             </Button>
             <SubmitButton>Хадгалах</SubmitButton>
-          </div>
+          </ModalActions>
         </form>
       </Modal>
     </>
@@ -73,10 +76,10 @@ export function EditUserButton({
 
   return (
     <>
-      <Button variant="secondary" size="sm" onClick={() => setOpen(true)}>
+      <Button variant="ghost" size="sm" onClick={() => setOpen(true)}>
         Засах
       </Button>
-      <Modal open={open} onClose={() => setOpen(false)} title={`${user.name} — засах`} description={user.email} wide>
+      <Modal open={open} onClose={() => setOpen(false)} title={`${user.name} — засах`} description={user.email} size="lg">
         <div className="space-y-6">
           <form action={updateAction} className="space-y-4">
             <input type="hidden" name="id" value={user.id} />
@@ -95,12 +98,12 @@ export function EditUserButton({
               </Field>
             </div>
             <Checkbox label="Идэвхтэй" name="isActive" defaultChecked={user.isActive} />
-            <div className="flex justify-end">
+            <ModalActions>
               <SubmitButton>Хадгалах</SubmitButton>
-            </div>
+            </ModalActions>
           </form>
 
-          <div className="border-t border-slate-200 pt-4">
+          <div className="border-t border-ink-200 pt-4">
             <form action={passwordAction} className="space-y-4">
               <input type="hidden" name="id" value={user.id} />
               {passwordState.status === "error" && passwordState.message ? (
@@ -117,9 +120,9 @@ export function EditUserButton({
               >
                 <Input id="edit-password" name="password" type="password" autoComplete="new-password" />
               </Field>
-              <div className="flex justify-end">
+              <ModalActions>
                 <SubmitButton variant="secondary">Нууц үг солих</SubmitButton>
-              </div>
+              </ModalActions>
             </form>
           </div>
         </div>

@@ -2,10 +2,11 @@
 
 import { useActionState, useMemo, useState } from "react";
 import type { Unit } from "@prisma/client";
+import { Plus, Trash2 } from "lucide-react";
 import { Alert } from "@/components/ui/Alert";
 import { Button, SubmitButton } from "@/components/ui/Button";
-import { Select } from "@/components/ui/Field";
-import { Table, Td, Th } from "@/components/ui/Table";
+import { NumberInput, Select } from "@/components/ui/Field";
+import { Table, Td, Th, Tr } from "@/components/ui/Table";
 import { IDLE, type ActionState } from "@/lib/action-state";
 import { formatMoney, formatMoneyPrecise } from "@/lib/format";
 import { compatibleUnits, convertQuantity, unitLabel } from "@/lib/units";
@@ -86,7 +87,7 @@ export function RecipeEditor({
             const material = byId.get(row.rawMaterialId);
             const units = material ? compatibleUnits(material.unit) : [];
             return (
-              <tr key={index}>
+              <Tr key={index}>
                 <Td>
                   <Select
                     name={`items[${index}][rawMaterialId]`}
@@ -102,13 +103,13 @@ export function RecipeEditor({
                   </Select>
                 </Td>
                 <Td align="right">
-                  <input
+                  <NumberInput
                     name={`items[${index}][quantity]`}
                     value={row.quantity}
                     onChange={(event) => update(index, { quantity: event.target.value })}
-                    inputMode="decimal"
                     placeholder="0"
-                    className="tabular w-28 rounded-lg border border-slate-300 px-3 py-2 text-right text-sm focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-100"
+                    aria-label="Шаардагдах хэмжээ"
+                    className="w-28"
                   />
                 </Td>
                 <Td>
@@ -126,7 +127,7 @@ export function RecipeEditor({
                     ))}
                   </Select>
                 </Td>
-                <Td align="right" className="text-slate-500">
+                <Td align="right" className="text-ink-500">
                   {material ? `${formatMoneyPrecise(material.averageCost)} / ${unitLabel(material.unit)}` : "-"}
                 </Td>
                 <Td align="right" className="font-medium">
@@ -135,43 +136,50 @@ export function RecipeEditor({
                 <Td align="right">
                   <Button
                     variant="ghost"
-                    size="sm"
+                    size="icon"
                     onClick={() => setRows((current) => current.filter((_, i) => i !== index))}
                     aria-label="Мөр устгах"
+                    className="text-ink-400 hover:text-red-600"
                   >
-                    ✕
+                    <Trash2 aria-hidden className="h-4 w-4" />
                   </Button>
                 </Td>
-              </tr>
+              </Tr>
             );
           })}
         </tbody>
       </Table>
 
-      <div className="flex flex-wrap items-center justify-between gap-3">
+      <div className="flex flex-wrap items-center justify-between gap-4 rounded-lg border border-ink-200 bg-ink-50 px-4 py-3">
         <Button
           variant="secondary"
+          size="sm"
+          icon={<Plus />}
           onClick={() => setRows((current) => [...current, { rawMaterialId: "", quantity: "", unit: "KG" }])}
         >
-          + Мөр нэмэх
+          Мөр нэмэх
         </Button>
 
-        <div className="flex flex-wrap items-center gap-6 text-sm">
-          <div>
-            <span className="text-slate-500">Жорын өртөг: </span>
-            <strong className="tabular">{formatMoney(totalCost)}</strong>
-          </div>
-          <div>
-            <span className="text-slate-500">Ашиг: </span>
-            <strong className={`tabular ${profit < 0 ? "text-red-600" : "text-emerald-600"}`}>
-              {formatMoney(profit)}
-            </strong>
-          </div>
-          <div>
-            <span className="text-slate-500">Ашгийн %: </span>
-            <strong className="tabular">{margin.toFixed(1)}%</strong>
-          </div>
-          <SubmitButton>Жор хадгалах</SubmitButton>
+        <div className="flex flex-wrap items-center gap-x-8 gap-y-3">
+          <dl className="flex flex-wrap gap-x-8 gap-y-2 text-[13px]">
+            <div>
+              <dt className="text-ink-500">Жорын өртөг</dt>
+              <dd className="tabular font-semibold text-ink-900">{formatMoney(totalCost)}</dd>
+            </div>
+            <div>
+              <dt className="text-ink-500">Нэгжийн ашиг</dt>
+              <dd
+                className={`tabular font-semibold ${profit < 0 ? "text-red-700" : "text-emerald-700"}`}
+              >
+                {formatMoney(profit)}
+              </dd>
+            </div>
+            <div>
+              <dt className="text-ink-500">Ашгийн хувь</dt>
+              <dd className="tabular font-semibold text-ink-900">{margin.toFixed(1)}%</dd>
+            </div>
+          </dl>
+          <SubmitButton pendingText="Хадгалж байна...">Жор хадгалах</SubmitButton>
         </div>
       </div>
     </form>

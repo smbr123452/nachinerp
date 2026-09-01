@@ -3,8 +3,9 @@ import { Prisma } from "@prisma/client";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { StatusBadge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
-import { Card, StatCard } from "@/components/ui/Card";
-import { EmptyRow, Table, Td, Th } from "@/components/ui/Table";
+import { Card } from "@/components/ui/Card";
+import { StatCard } from "@/components/ui/StatCard";
+import { EmptyRow, Table, TableLink, Td, Th, Tr } from "@/components/ui/Table";
 import { DateFilter, FilterBar, FilterSelect } from "@/components/ui/SearchFilters";
 import { requirePageUser } from "@/lib/auth/guards";
 import { sum } from "@/lib/decimal";
@@ -93,12 +94,12 @@ export default async function SalesPage({ searchParams }: { searchParams: Search
               <EmptyRow colSpan={10}>Борлуулалт бүртгэгдээгүй байна.</EmptyRow>
             ) : (
               batches.map((batch) => (
-                <tr key={batch.id} className="hover:bg-slate-50">
+                <Tr key={batch.id}>
                   <Td>{formatDate(batch.date)}</Td>
                   <Td>
-                    <Link href={`/sales/${batch.id}`} className="font-medium text-brand-600 hover:underline">
+                    <TableLink href={`/sales/${batch.id}`} strong>
                       {batch.batchNo}
-                    </Link>
+                    </TableLink>
                   </Td>
                   <Td align="right">{batch._count.items}</Td>
                   <Td align="right" className="font-medium">
@@ -110,7 +111,7 @@ export default async function SalesPage({ searchParams }: { searchParams: Search
                       sum([batch.cardAmount, batch.qrAmount, batch.bankTransferAmount, batch.otherAmount]),
                     )}
                   </Td>
-                  <Td align="right" className="text-slate-500">
+                  <Td align="right" className="text-ink-500">
                     {formatMoney(batch.totalCogs)}
                   </Td>
                   <Td align="right" className="text-emerald-600">
@@ -119,8 +120,8 @@ export default async function SalesPage({ searchParams }: { searchParams: Search
                   <Td>
                     <StatusBadge status={batch.status} />
                   </Td>
-                  <Td className="text-slate-500">{batch.createdBy.name}</Td>
-                </tr>
+                  <Td className="text-ink-500">{batch.createdBy.name}</Td>
+                </Tr>
               ))
             )}
           </tbody>

@@ -1,4 +1,3 @@
-import Link from "next/link";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { EmptyState } from "@/components/ui/Alert";
 import { requirePageUser } from "@/lib/auth/guards";
@@ -31,16 +30,9 @@ export default async function NewPurchasePage() {
   return (
     <>
       <PageHeader
+        backHref="/purchases"
         title="Шинэ худалдан авалт"
         description="Батлагдмагц нөөц нэмэгдэж, жигнэсэн дундаж өртөг шинэчлэгдэнэ."
-        action={
-          <Link
-            href="/purchases"
-            className="inline-flex h-11 items-center rounded-lg border border-slate-300 bg-white px-4 text-sm font-medium text-slate-700 hover:bg-slate-50"
-          >
-            Буцах
-          </Link>
-        }
       />
       {options.length === 0 ? (
         <EmptyState

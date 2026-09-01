@@ -1,11 +1,13 @@
 "use client";
 
 import { useActionState, useMemo, useState } from "react";
+import { Plus, Trash2, Wand2 } from "lucide-react";
 import { Alert } from "@/components/ui/Alert";
 import { Button, SubmitButton } from "@/components/ui/Button";
-import { Card, CardBody, CardHeader } from "@/components/ui/Card";
-import { Checkbox, Field, Input, Select } from "@/components/ui/Field";
-import { Table, Td, Th } from "@/components/ui/Table";
+import { Card, CardBody, CardFooter, CardHeader } from "@/components/ui/Card";
+import { Checkbox, Field, FieldGrid, Input, NumberInput, Select } from "@/components/ui/Field";
+import { SummaryPanel } from "@/components/ui/SummaryPanel";
+import { Table, Td, Th, TotalRow, Tr } from "@/components/ui/Table";
 import { IDLE, type ActionState } from "@/lib/action-state";
 import { formatMoney, formatQty } from "@/lib/format";
 import { cn } from "@/lib/cn";
@@ -58,6 +60,9 @@ export function SaleForm({
     toNumber(payments.bankTransfer) +
     toNumber(payments.other);
   const difference = total - paymentTotal;
+  const balanced = Math.abs(difference) <= 0.5 && total > 0;
+  const filledRows = rows.filter((row) => row.productId && toNumber(row.quantity) > 0).length;
+  const totalUnits = rows.reduce((acc, row) => acc + toNumber(row.quantity), 0);
 
   // Жорын дагуух материалын хэрэглээг урьдчилан харуулна.
   const consumption = useMemo(() => {
@@ -106,14 +111,14 @@ export function SaleForm({
       <Card>
         <CardHeader title="Өдрийн мэдээлэл" />
         <CardBody>
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          <FieldGrid columns={3}>
             <Field label="Огноо" htmlFor="date" required error={state.fieldErrors?.date}>
               <Input id="date" name="date" type="date" defaultValue={today} required />
             </Field>
             <Field label="Тайлбар" htmlFor="note" className="lg:col-span-2">
               <Input id="note" name="note" placeholder="Сонголтоор" />
             </Field>
-          </div>
+          </FieldGrid>
         </CardBody>
       </Card>
 
@@ -134,7 +139,7 @@ export function SaleForm({
           </thead>
           <tbody>
             {rows.map((row, index) => (
-              <tr key={index}>
+              <Tr key={index}>
                 <Td>
                   <Select
                     name={`items[${index}][productId]`}
@@ -150,23 +155,23 @@ export function SaleForm({
                   </Select>
                 </Td>
                 <Td align="right">
-                  <input
+                  <NumberInput
                     name={`items[${index}][quantity]`}
                     value={row.quantity}
                     onChange={(event) => update(index, { quantity: event.target.value })}
-                    inputMode="decimal"
                     placeholder="0"
-                    className="tabular w-28 rounded-lg border border-slate-300 px-3 py-2 text-right text-sm focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-100"
+                    aria-label="Тоо ширхэг"
+                    className="w-28"
                   />
                 </Td>
                 <Td align="right">
-                  <input
+                  <NumberInput
                     name={`items[${index}][unitPrice]`}
                     value={row.unitPrice}
                     onChange={(event) => update(index, { unitPrice: event.target.value })}
-                    inputMode="decimal"
                     placeholder="0"
-                    className="tabular w-32 rounded-lg border border-slate-300 px-3 py-2 text-right text-sm focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-100"
+                    aria-label="Нэгж үнэ"
+                    className="w-32"
                   />
                 </Td>
                 <Td align="right" className="font-medium">
@@ -175,27 +180,34 @@ export function SaleForm({
                 <Td align="right">
                   <Button
                     variant="ghost"
-                    size="sm"
+                    size="icon"
                     onClick={() => setRows((current) => current.filter((_, i) => i !== index))}
                     aria-label="Мөр устгах"
+                    disabled={rows.length === 1}
+                    className="text-ink-400 hover:text-red-600"
                   >
-                    ✕
+                    <Trash2 aria-hidden className="h-4 w-4" />
                   </Button>
                 </Td>
-              </tr>
+              </Tr>
             ))}
-            <tr className="bg-slate-50 font-semibold">
+            <TotalRow>
               <Td colSpan={3}>Нийт орлого</Td>
               <Td align="right">{formatMoney(total)}</Td>
               <Td />
-            </tr>
+            </TotalRow>
           </tbody>
         </Table>
-        <CardBody className="border-t border-slate-200">
-          <Button variant="secondary" onClick={() => setRows((current) => [...current, { ...EMPTY_ROW }])}>
-            + Мөр нэмэх
+        <CardFooter>
+          <Button
+            variant="secondary"
+            size="sm"
+            icon={<Plus />}
+            onClick={() => setRows((current) => [...current, { ...EMPTY_ROW }])}
+          >
+            Мөр нэмэх
           </Button>
-        </CardBody>
+        </CardFooter>
       </Card>
 
       {missingRecipe.length > 0 ? (
@@ -261,7 +273,7 @@ export function SaleForm({
       <Card>
         <CardHeader title="Төлбөрийн хуваарилалт" description="Бэлэн мөнгө кассд, карт / QR / шилжүүлэг банкинд бүртгэгдэнэ." />
         <CardBody>
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
+          <div className="grid gap-4 sm:grid-cols-3 lg:grid-cols-5">
             {([
               ["cash", "Бэлэн"],
               ["card", "Карт"],
@@ -270,53 +282,75 @@ export function SaleForm({
               ["other", "Бусад"],
             ] as const).map(([key, label]) => (
               <Field key={key} label={label} htmlFor={key}>
-                <Input
+                <NumberInput
                   id={key}
                   name={key}
-                  inputMode="decimal"
                   value={payments[key]}
                   placeholder="0"
                   onChange={(event) => setPayments((current) => ({ ...current, [key]: event.target.value }))}
-                  className="text-right"
                 />
               </Field>
             ))}
           </div>
 
-          <div className="mt-4 flex flex-wrap items-center justify-between gap-3 rounded-lg bg-slate-50 px-4 py-3">
-            <div className="flex flex-wrap gap-6 text-sm">
+          <div className="mt-4 flex flex-wrap items-center justify-between gap-3 rounded-lg border border-ink-200 bg-ink-50 px-4 py-3">
+            <dl className="flex flex-wrap gap-x-8 gap-y-2 text-[13px]">
               <div>
-                <span className="text-slate-500">Нийт орлого: </span>
-                <strong className="tabular">{formatMoney(total)}</strong>
+                <dt className="text-ink-500">Нийт орлого</dt>
+                <dd className="tabular font-semibold text-ink-900">{formatMoney(total)}</dd>
               </div>
               <div>
-                <span className="text-slate-500">Хуваарилсан: </span>
-                <strong className="tabular">{formatMoney(paymentTotal)}</strong>
+                <dt className="text-ink-500">Хуваарилсан</dt>
+                <dd className="tabular font-semibold text-ink-900">{formatMoney(paymentTotal)}</dd>
               </div>
               <div>
-                <span className="text-slate-500">Зөрүү: </span>
-                <strong className={cn("tabular", Math.abs(difference) > 0.5 ? "text-red-600" : "text-emerald-600")}>
+                <dt className="text-ink-500">Зөрүү</dt>
+                <dd
+                  className={cn(
+                    "tabular font-semibold",
+                    total === 0 ? "text-ink-500" : balanced ? "text-emerald-700" : "text-red-700",
+                  )}
+                >
                   {formatMoney(difference)}
-                </strong>
+                </dd>
               </div>
-            </div>
-            <Button variant="secondary" size="sm" onClick={fillCash} disabled={total <= 0}>
+            </dl>
+            <Button
+              variant="secondary"
+              size="sm"
+              icon={<Wand2 />}
+              onClick={fillCash}
+              disabled={total <= 0}
+            >
               Үлдсэнийг бэлнээр бөглөх
             </Button>
           </div>
         </CardBody>
       </Card>
 
-      <Card>
-        <CardBody className="flex flex-wrap items-center justify-between gap-4">
-          <p className="text-sm text-slate-500">
-            Баталгаажуулсны дараа нөөц хасагдаж, мөнгөн гүйлгээ болон аудитын бичлэг үүснэ.
-          </p>
-          <SubmitButton size="lg" pendingText="Баталгаажуулж байна..." disabled={Math.abs(difference) > 0.5}>
+      <SummaryPanel
+        lines={[
+          { label: "Нэр төрөл", value: filledRows },
+          { label: "Борлуулсан тоо", value: formatQty(totalUnits) },
+          {
+            label: "Төлбөрийн зөрүү",
+            value: formatMoney(difference),
+            tone: total === 0 ? "muted" : balanced ? "positive" : "negative",
+          },
+        ]}
+        totalLabel="Нийт орлого"
+        total={formatMoney(total)}
+        note={
+          balanced
+            ? "Баталгаажуулсны дараа нөөц хасагдаж, мөнгөн гүйлгээ болон аудитын бичлэг үүснэ."
+            : "Төлбөрийн хуваарилалт нийт орлоготой тэнцсэний дараа баталгаажуулах боломжтой."
+        }
+        action={
+          <SubmitButton size="lg" pendingText="Баталгаажуулж байна..." disabled={!balanced}>
             Борлуулалт баталгаажуулах
           </SubmitButton>
-        </CardBody>
-      </Card>
+        }
+      />
     </form>
   );
 }

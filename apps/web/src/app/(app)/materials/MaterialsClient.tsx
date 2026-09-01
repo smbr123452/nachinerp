@@ -2,10 +2,11 @@
 
 import { useActionState, useEffect, useState } from "react";
 import type { Unit } from "@prisma/client";
+import { Plus } from "lucide-react";
 import { Alert } from "@/components/ui/Alert";
 import { Button, SubmitButton } from "@/components/ui/Button";
 import { Checkbox, Field, Input, Select } from "@/components/ui/Field";
-import { Modal } from "@/components/ui/Modal";
+import { Modal, ModalActions } from "@/components/ui/Modal";
 import { IDLE, type ActionState } from "@/lib/action-state";
 import { ALL_UNITS, unitLabel } from "@/lib/units";
 import {
@@ -104,12 +105,12 @@ function MaterialForm({
         </div>
       </div>
 
-      <div className="flex justify-end gap-2">
+      <ModalActions>
         <Button variant="secondary" onClick={onDone}>
           Болих
         </Button>
         <SubmitButton>Хадгалах</SubmitButton>
-      </div>
+      </ModalActions>
     </form>
   );
 }
@@ -118,8 +119,10 @@ export function NewMaterialButton({ categories }: { categories: Category[] }) {
   const [open, setOpen] = useState(false);
   return (
     <>
-      <Button onClick={() => setOpen(true)}>+ Материал нэмэх</Button>
-      <Modal open={open} onClose={() => setOpen(false)} title="Шинэ бараа материал" wide>
+      <Button icon={<Plus />} onClick={() => setOpen(true)}>
+        Материал нэмэх
+      </Button>
+      <Modal open={open} onClose={() => setOpen(false)} title="Шинэ бараа материал" size="lg">
         <MaterialForm
           action={createRawMaterialAction}
           categories={categories}
@@ -140,10 +143,10 @@ export function EditMaterialButton({
   const [open, setOpen] = useState(false);
   return (
     <>
-      <Button variant="secondary" size="sm" onClick={() => setOpen(true)}>
+      <Button variant="ghost" size="sm" onClick={() => setOpen(true)}>
         Засах
       </Button>
-      <Modal open={open} onClose={() => setOpen(false)} title={`${material.name} — засах`} wide>
+      <Modal open={open} onClose={() => setOpen(false)} title={`${material.name} — засах`} size="lg">
         <MaterialForm
           action={updateRawMaterialAction}
           initial={material}
@@ -176,12 +179,12 @@ export function NewCategoryButton() {
           <Field label="Нэр" htmlFor="category-name" required error={state.fieldErrors?.name}>
             <Input id="category-name" name="name" required placeholder="Гурилан бүтээгдэхүүн" />
           </Field>
-          <div className="flex justify-end gap-2">
+          <ModalActions>
             <Button variant="secondary" onClick={() => setOpen(false)}>
               Болих
             </Button>
             <SubmitButton>Хадгалах</SubmitButton>
-          </div>
+          </ModalActions>
         </form>
       </Modal>
     </>

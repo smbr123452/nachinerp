@@ -1,9 +1,9 @@
-import Link from "next/link";
 import { notFound } from "next/navigation";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { Badge } from "@/components/ui/Badge";
-import { Card, CardBody, CardHeader, StatCard } from "@/components/ui/Card";
-import { EmptyRow, Table, Td, Th } from "@/components/ui/Table";
+import { Card, CardBody, CardHeader } from "@/components/ui/Card";
+import { StatCard } from "@/components/ui/StatCard";
+import { EmptyRow, Table, TableLink, Td, Th, TotalRow, Tr } from "@/components/ui/Table";
 import { requirePageUser } from "@/lib/auth/guards";
 import { d, ZERO } from "@/lib/decimal";
 import { formatDate, formatMoney, formatPercent, formatQty } from "@/lib/format";
@@ -56,16 +56,9 @@ export default async function ProductDetailPage({ params }: { params: Params }) 
   return (
     <>
       <PageHeader
+        backHref="/products"
         title={product.name}
         description={`${product.sku} · ${product.category?.name ?? "Ангилалгүй"}`}
-        action={
-          <Link
-            href="/products"
-            className="inline-flex h-11 items-center rounded-lg border border-slate-300 bg-white px-4 text-sm font-medium text-slate-700 hover:bg-slate-50"
-          >
-            Буцах
-          </Link>
-        }
       />
 
       {!product.isActive ? (
@@ -118,11 +111,11 @@ export default async function ProductDetailPage({ params }: { params: Params }) 
               ) : (
                 <>
                   {summary.lines.map((line) => (
-                    <tr key={line.rawMaterialId}>
+                    <Tr key={line.rawMaterialId}>
                       <Td>
-                        <Link href={`/materials/${line.rawMaterialId}`} className="text-brand-600 hover:underline">
+                        <TableLink href={`/materials/${line.rawMaterialId}`}>
                           {line.materialName}
-                        </Link>
+                        </TableLink>
                       </Td>
                       <Td align="right">
                         {formatQty(line.quantity)} {line.unit}
@@ -131,18 +124,18 @@ export default async function ProductDetailPage({ params }: { params: Params }) 
                       <Td
                         align="right"
                         className={
-                          line.availableQuantity.lessThan(line.baseQuantity) ? "text-red-600" : "text-slate-500"
+                          line.availableQuantity.lessThan(line.baseQuantity) ? "text-red-600" : "text-ink-500"
                         }
                       >
                         {formatQty(line.availableQuantity)} {line.baseUnit}
                       </Td>
-                    </tr>
+                    </Tr>
                   ))}
-                  <tr className="bg-slate-50 font-semibold">
+                  <TotalRow>
                     <Td colSpan={2}>Нийт</Td>
                     <Td align="right">{formatMoney(summary.recipeCost)}</Td>
                     <Td />
-                  </tr>
+                  </TotalRow>
                 </>
               )}
             </tbody>
@@ -166,17 +159,17 @@ export default async function ProductDetailPage({ params }: { params: Params }) 
                 <EmptyRow colSpan={5} />
               ) : (
                 recentSales.map((item) => (
-                  <tr key={item.id}>
+                  <Tr key={item.id}>
                     <Td>{formatDate(item.saleBatch.date)}</Td>
                     <Td>
-                      <Link href={`/sales/${item.saleBatch.id}`} className="text-brand-600 hover:underline">
+                      <TableLink href={`/sales/${item.saleBatch.id}`}>
                         {item.saleBatch.batchNo}
-                      </Link>
+                      </TableLink>
                     </Td>
                     <Td align="right">{formatQty(item.quantity)}</Td>
                     <Td align="right">{formatMoney(item.total)}</Td>
                     <Td align="right">{formatMoney(item.totalCost ?? ZERO)}</Td>
-                  </tr>
+                  </Tr>
                 ))
               )}
             </tbody>

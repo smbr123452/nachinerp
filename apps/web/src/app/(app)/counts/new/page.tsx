@@ -1,4 +1,3 @@
-import Link from "next/link";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { EmptyState } from "@/components/ui/Alert";
 import { requirePageUser } from "@/lib/auth/guards";
@@ -30,16 +29,9 @@ export default async function NewCountPage() {
   return (
     <>
       <PageHeader
+        backHref="/counts"
         title="Шинэ тооллого"
         description="Тоолох материалаа сонгоно уу. Системийн үлдэгдэл тухайн үедээ бүртгэгдэнэ."
-        action={
-          <Link
-            href="/counts"
-            className="inline-flex h-11 items-center rounded-lg border border-slate-300 bg-white px-4 text-sm font-medium text-slate-700 hover:bg-slate-50"
-          >
-            Буцах
-          </Link>
-        }
       />
       {options.length === 0 ? (
         <EmptyState title="Идэвхтэй бараа материал алга" description="Эхлээд материалаа бүртгэнэ үү." />

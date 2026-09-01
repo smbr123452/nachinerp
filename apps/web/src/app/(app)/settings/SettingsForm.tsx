@@ -25,13 +25,13 @@ export function SettingsForm({
         <Input id="companyName" name="companyName" defaultValue={companyName} required />
       </Field>
 
-      <div className="rounded-lg border border-slate-200 p-4">
+      <div className="rounded-lg border border-ink-200 p-4">
         <Checkbox
           label="Нөөц хүрэлцэхгүй үед борлуулалт баталгаажуулахыг зөвшөөрөх"
           name="allowNegativeStock"
           defaultChecked={allowNegativeStock}
         />
-        <p className="mt-2 text-xs text-slate-500">
+        <p className="mt-2 text-xs text-ink-500">
           Анхдагчаар хаалттай. Асаавал үлдэгдэл сөрөг болох боломжтой тул зөвхөн онцгой тохиолдолд ашиглана уу.
         </p>
       </div>

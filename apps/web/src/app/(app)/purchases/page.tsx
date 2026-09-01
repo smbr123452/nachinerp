@@ -3,7 +3,7 @@ import { Prisma } from "@prisma/client";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { StatusBadge } from "@/components/ui/Badge";
 import { Card } from "@/components/ui/Card";
-import { EmptyRow, Table, Td, Th } from "@/components/ui/Table";
+import { EmptyRow, Table, TableLink, Td, Th, Tr } from "@/components/ui/Table";
 import { DateFilter, FilterBar, FilterSelect } from "@/components/ui/SearchFilters";
 import { Button } from "@/components/ui/Button";
 import { requirePageUser } from "@/lib/auth/guards";
@@ -83,15 +83,15 @@ export default async function PurchasesPage({ searchParams }: { searchParams: Se
               <EmptyRow colSpan={8}>Худалдан авалт бүртгэгдээгүй байна.</EmptyRow>
             ) : (
               purchases.map((purchase) => (
-                <tr key={purchase.id} className="hover:bg-slate-50">
+                <Tr key={purchase.id}>
                   <Td>{formatDate(purchase.date)}</Td>
                   <Td>
-                    <Link href={`/purchases/${purchase.id}`} className="font-medium text-brand-600 hover:underline">
+                    <TableLink href={`/purchases/${purchase.id}`} strong>
                       {purchase.purchaseNo}
-                    </Link>
+                    </TableLink>
                   </Td>
-                  <Td className="text-slate-500">{purchase.supplier?.name ?? "-"}</Td>
-                  <Td className="text-slate-500">{PURCHASE_PAYMENT_LABEL[purchase.paymentMethod]}</Td>
+                  <Td className="text-ink-500">{purchase.supplier?.name ?? "-"}</Td>
+                  <Td className="text-ink-500">{PURCHASE_PAYMENT_LABEL[purchase.paymentMethod]}</Td>
                   <Td align="right">{purchase._count.items}</Td>
                   <Td align="right" className="font-medium">
                     {formatMoney(purchase.totalAmount)}
@@ -99,8 +99,8 @@ export default async function PurchasesPage({ searchParams }: { searchParams: Se
                   <Td>
                     <StatusBadge status={purchase.status} />
                   </Td>
-                  <Td className="text-slate-500">{purchase.createdBy.name}</Td>
-                </tr>
+                  <Td className="text-ink-500">{purchase.createdBy.name}</Td>
+                </Tr>
               ))
             )}
           </tbody>

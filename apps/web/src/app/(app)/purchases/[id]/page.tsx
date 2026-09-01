@@ -1,11 +1,10 @@
-import Link from "next/link";
 import { notFound } from "next/navigation";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { StatusBadge } from "@/components/ui/Badge";
 import { Alert } from "@/components/ui/Alert";
 import { Card, CardHeader } from "@/components/ui/Card";
 import { CancelDocumentButton } from "@/components/ui/ConfirmAction";
-import { Table, Td, Th } from "@/components/ui/Table";
+import { Table, TableLink, Td, Th, TotalRow, Tr } from "@/components/ui/Table";
 import { requirePageUser } from "@/lib/auth/guards";
 import { formatDate, formatDateTime, formatMoney, formatMoneyPrecise, formatQty } from "@/lib/format";
 import { prisma } from "@/lib/prisma";
@@ -39,17 +38,10 @@ export default async function PurchaseDetailPage({ params }: { params: Params })
   return (
     <>
       <PageHeader
+        backHref="/purchases"
         title={`Худалдан авалт ${purchase.purchaseNo}`}
         description={`${formatDate(purchase.date)} · ${purchase.supplier?.name ?? "Нийлүүлэгчгүй"} · ${PURCHASE_PAYMENT_LABEL[purchase.paymentMethod]}`}
-        action={
-          <>
-            <Link
-              href="/purchases"
-              className="inline-flex h-11 items-center rounded-lg border border-slate-300 bg-white px-4 text-sm font-medium text-slate-700 hover:bg-slate-50"
-            >
-              Буцах
-            </Link>
-            {purchase.status === "POSTED" ? (
+        action={purchase.status === "POSTED" ? (
               <CancelDocumentButton
                 id={purchase.id}
                 action={cancelPurchaseAction}
@@ -57,14 +49,12 @@ export default async function PurchaseDetailPage({ params }: { params: Params })
                 description="Нөөц болон дундаж өртөг буцаагдана. Баримт нь түүхэнд үлдэнэ."
               />
             ) : null}
-          </>
-        }
       />
 
       <div className="mb-4 flex flex-wrap items-center gap-3">
         <StatusBadge status={purchase.status} />
-        <span className="text-sm text-slate-500">Бүртгэсэн: {purchase.createdBy.name}</span>
-        <span className="text-sm text-slate-500">{formatDateTime(purchase.createdAt)}</span>
+        <span className="text-sm text-ink-500">Бүртгэсэн: {purchase.createdBy.name}</span>
+        <span className="text-sm text-ink-500">{formatDateTime(purchase.createdAt)}</span>
       </div>
 
       {purchase.status === "CANCELLED" ? (
@@ -93,11 +83,11 @@ export default async function PurchaseDetailPage({ params }: { params: Params })
           </thead>
           <tbody>
             {purchase.items.map((item) => (
-              <tr key={item.id}>
+              <Tr key={item.id}>
                 <Td>
-                  <Link href={`/materials/${item.rawMaterialId}`} className="text-brand-600 hover:underline">
+                  <TableLink href={`/materials/${item.rawMaterialId}`}>
                     {item.rawMaterial.name}
-                  </Link>
+                  </TableLink>
                 </Td>
                 <Td align="right">
                   {formatQty(item.quantity)} {unitLabel(item.unit)}
@@ -106,17 +96,17 @@ export default async function PurchaseDetailPage({ params }: { params: Params })
                 <Td align="right" className="font-medium">
                   {formatMoney(item.subtotal)}
                 </Td>
-                <Td align="right" className="text-slate-500">
+                <Td align="right" className="text-ink-500">
                   {formatQty(item.baseQuantity)} {unitLabel(item.rawMaterial.unit)} ·{" "}
                   {formatMoneyPrecise(item.baseUnitCost)}
                 </Td>
-              </tr>
+              </Tr>
             ))}
-            <tr className="bg-slate-50 font-semibold">
+            <TotalRow>
               <Td colSpan={3}>Нийт</Td>
               <Td align="right">{formatMoney(purchase.totalAmount)}</Td>
               <Td />
-            </tr>
+            </TotalRow>
           </tbody>
         </Table>
       </Card>
@@ -136,14 +126,14 @@ export default async function PurchaseDetailPage({ params }: { params: Params })
           </thead>
           <tbody>
             {movements.map((movement) => (
-              <tr key={movement.id}>
+              <Tr key={movement.id}>
                 <Td className="whitespace-nowrap">{formatDateTime(movement.createdAt)}</Td>
                 <Td>{movement.rawMaterial.name}</Td>
                 <Td>{MOVEMENT_TYPE_LABEL[movement.movementType]}</Td>
                 <Td align="right">{formatQty(movement.quantity)}</Td>
                 <Td align="right">{formatMoneyPrecise(movement.unitCost)}</Td>
                 <Td align="right">{formatQty(movement.balanceAfter)}</Td>
-              </tr>
+              </Tr>
             ))}
           </tbody>
         </Table>

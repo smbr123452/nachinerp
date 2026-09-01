@@ -1,8 +1,9 @@
 import { Prisma } from "@prisma/client";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { Badge } from "@/components/ui/Badge";
-import { Card, CardHeader, StatCard } from "@/components/ui/Card";
-import { EmptyRow, Table, Td, Th } from "@/components/ui/Table";
+import { Card, CardHeader } from "@/components/ui/Card";
+import { StatCard } from "@/components/ui/StatCard";
+import { EmptyRow, Table, Td, Th, Tr } from "@/components/ui/Table";
 import { DateFilter, FilterBar, FilterSelect } from "@/components/ui/SearchFilters";
 import { requirePageUser } from "@/lib/auth/guards";
 import { d } from "@/lib/decimal";
@@ -109,33 +110,33 @@ export default async function MoneyPage({ searchParams }: { searchParams: Search
               <EmptyRow colSpan={7}>Гүйлгээ бүртгэгдээгүй байна.</EmptyRow>
             ) : (
               transactions.map((txn) => (
-                <tr key={txn.id} className="hover:bg-slate-50">
+                <Tr key={txn.id}>
                   <Td className="whitespace-nowrap">{formatDate(txn.occurredAt)}</Td>
                   <Td>{MONEY_TYPE_LABEL[txn.type]}</Td>
                   <Td>
                     {txn.sourceAccount ? (
                       <Badge tone="danger">{ACCOUNT_LABEL[txn.sourceAccount]}</Badge>
                     ) : (
-                      <span className="text-slate-300">-</span>
+                      <span className="text-ink-300">-</span>
                     )}
                   </Td>
                   <Td>
                     {txn.destinationAccount ? (
                       <Badge tone="success">{ACCOUNT_LABEL[txn.destinationAccount]}</Badge>
                     ) : (
-                      <span className="text-slate-300">-</span>
+                      <span className="text-ink-300">-</span>
                     )}
                   </Td>
                   <Td align="right" className="font-medium">
                     {formatMoney(txn.amount)}
                   </Td>
-                  <Td className="text-slate-500">{txn.note ?? "-"}</Td>
-                  <Td className="whitespace-nowrap text-xs text-slate-400">
+                  <Td className="text-ink-500">{txn.note ?? "-"}</Td>
+                  <Td className="whitespace-nowrap text-xs text-ink-400">
                     {txn.createdBy.name}
                     <br />
                     {formatDateTime(txn.createdAt)}
                   </Td>
-                </tr>
+                </Tr>
               ))
             )}
           </tbody>

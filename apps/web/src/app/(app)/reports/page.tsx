@@ -1,13 +1,16 @@
 import Link from "next/link";
+import { Suspense } from "react";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { Badge } from "@/components/ui/Badge";
-import { Card, CardHeader, StatCard } from "@/components/ui/Card";
-import { EmptyRow, Table, Td, Th } from "@/components/ui/Table";
+import { Card, CardHeader } from "@/components/ui/Card";
+import { StatCard } from "@/components/ui/StatCard";
+import { EmptyRow, MonoText, Table, TableLink, Td, Th, TotalRow, Tr } from "@/components/ui/Table";
 import { DateFilter, FilterBar } from "@/components/ui/SearchFilters";
+import { Tabs } from "@/components/ui/Tabs";
+import { TableSkeleton } from "@/components/ui/Skeleton";
 import { requirePageUser } from "@/lib/auth/guards";
 import { sum } from "@/lib/decimal";
 import { formatDate, formatMoney, formatMoneyPrecise, formatPercent, formatQty } from "@/lib/format";
-import { cn } from "@/lib/cn";
 import {
   getDailySalesReport,
   getExpenseReport,
@@ -76,34 +79,24 @@ export default async function ReportsPage({ searchParams }: { searchParams: Sear
         <DateFilter paramKey="to" label="Дуусах огноо" />
       </FilterBar>
 
-      <div className="no-print mb-4 flex flex-wrap gap-2 border-b border-slate-200">
-        {REPORTS.map((item) => {
+      <Tabs
+        active={report}
+        items={REPORTS.map((item) => {
           const itemQuery = new URLSearchParams(query);
           itemQuery.set("report", item.key);
-          return (
-            <Link
-              key={item.key}
-              href={`/reports?${itemQuery.toString()}`}
-              className={cn(
-                "-mb-px border-b-2 px-4 py-2 text-sm font-medium",
-                report === item.key
-                  ? "border-brand-600 text-brand-700"
-                  : "border-transparent text-slate-500 hover:text-slate-800",
-              )}
-            >
-              {item.label}
-            </Link>
-          );
+          return { ...item, href: `/reports?${itemQuery.toString()}` };
         })}
-      </div>
+      />
 
-      {report === "daily" ? <DailyReport range={range} /> : null}
-      {report === "products" ? <ProductReport range={range} /> : null}
-      {report === "expenses" ? <ExpenseReport range={range} /> : null}
-      {report === "purchases" ? <PurchaseReport range={range} /> : null}
-      {report === "inventory" ? <InventoryReport /> : null}
-      {report === "variance" ? <VarianceReport range={range} /> : null}
-      {report === "prices" ? <PriceReport range={range} /> : null}
+      <Suspense key={report} fallback={<TableSkeleton rows={8} columns={6} />}>
+        {report === "daily" ? <DailyReport range={range} /> : null}
+        {report === "products" ? <ProductReport range={range} /> : null}
+        {report === "expenses" ? <ExpenseReport range={range} /> : null}
+        {report === "purchases" ? <PurchaseReport range={range} /> : null}
+        {report === "inventory" ? <InventoryReport /> : null}
+        {report === "variance" ? <VarianceReport range={range} /> : null}
+        {report === "prices" ? <PriceReport range={range} /> : null}
+      </Suspense>
     </>
   );
 }
@@ -132,29 +125,29 @@ async function DailyReport({ range }: RangeProps) {
           ) : (
             <>
               {rows.map((row) => (
-                <tr key={row.date.toISOString()}>
+                <Tr key={row.date.toISOString()}>
                   <Td>{formatDate(row.date)}</Td>
                   <Td align="right" className="font-medium">
                     {formatMoney(row.revenue)}
                   </Td>
                   <Td align="right">{formatMoney(row.cash)}</Td>
                   <Td align="right">{formatMoney(row.bank)}</Td>
-                  <Td align="right" className="text-slate-500">
+                  <Td align="right" className="text-ink-500">
                     {formatMoney(row.cogs)}
                   </Td>
                   <Td align="right" className="text-emerald-600">
                     {formatMoney(row.grossProfit)}
                   </Td>
-                </tr>
+                </Tr>
               ))}
-              <tr className="bg-slate-50 font-semibold">
+              <TotalRow>
                 <Td>Нийт</Td>
                 <Td align="right">{formatMoney(sum(rows.map((r) => r.revenue)))}</Td>
                 <Td align="right">{formatMoney(sum(rows.map((r) => r.cash)))}</Td>
                 <Td align="right">{formatMoney(sum(rows.map((r) => r.bank)))}</Td>
                 <Td align="right">{formatMoney(sum(rows.map((r) => r.cogs)))}</Td>
                 <Td align="right">{formatMoney(sum(rows.map((r) => r.grossProfit)))}</Td>
-              </tr>
+              </TotalRow>
             </>
           )}
         </tbody>
@@ -184,25 +177,25 @@ async function ProductReport({ range }: RangeProps) {
             <EmptyRow colSpan={6} />
           ) : (
             rows.map((row) => (
-              <tr key={row.productId}>
+              <Tr key={row.productId}>
                 <Td>
-                  <Link href={`/products/${row.productId}`} className="text-brand-600 hover:underline">
+                  <TableLink href={`/products/${row.productId}`}>
                     {row.name}
-                  </Link>
-                  <span className="ml-2 font-mono text-xs text-slate-400">{row.sku}</span>
+                  </TableLink>
+                  <span className="ml-2 font-mono text-xs text-ink-400">{row.sku}</span>
                 </Td>
                 <Td align="right">{formatQty(row.quantity)}</Td>
                 <Td align="right" className="font-medium">
                   {formatMoney(row.revenue)}
                 </Td>
-                <Td align="right" className="text-slate-500">
+                <Td align="right" className="text-ink-500">
                   {formatMoney(row.cogs)}
                 </Td>
                 <Td align="right" className="text-emerald-600">
                   {formatMoney(row.grossProfit)}
                 </Td>
                 <Td align="right">{formatPercent(row.grossMargin.toNumber())}</Td>
-              </tr>
+              </Tr>
             ))
           )}
         </tbody>
@@ -232,7 +225,7 @@ async function ExpenseReport({ range }: RangeProps) {
           ) : (
             <>
               {rows.map((row) => (
-                <tr key={row.categoryId}>
+                <Tr key={row.categoryId}>
                   <Td>{row.name}</Td>
                   <Td align="right">{row.count}</Td>
                   <Td align="right" className="font-medium">
@@ -243,13 +236,13 @@ async function ExpenseReport({ range }: RangeProps) {
                       ? formatPercent(row.amount.dividedBy(total).times(100).toNumber())
                       : "-"}
                   </Td>
-                </tr>
+                </Tr>
               ))}
-              <tr className="bg-slate-50 font-semibold">
+              <TotalRow>
                 <Td colSpan={2}>Нийт</Td>
                 <Td align="right">{formatMoney(total)}</Td>
                 <Td />
-              </tr>
+              </TotalRow>
             </>
           )}
         </tbody>
@@ -278,11 +271,11 @@ async function PurchaseReport({ range }: RangeProps) {
           ) : (
             <>
               {rows.map((row) => (
-                <tr key={row.rawMaterialId}>
+                <Tr key={row.rawMaterialId}>
                   <Td>
-                    <Link href={`/materials/${row.rawMaterialId}`} className="text-brand-600 hover:underline">
+                    <TableLink href={`/materials/${row.rawMaterialId}`}>
                       {row.name}
-                    </Link>
+                    </TableLink>
                   </Td>
                   <Td align="right">
                     {formatQty(row.quantity)} {row.unit}
@@ -291,13 +284,13 @@ async function PurchaseReport({ range }: RangeProps) {
                     {formatMoney(row.amount)}
                   </Td>
                   <Td align="right">{formatMoneyPrecise(row.averagePrice)}</Td>
-                </tr>
+                </Tr>
               ))}
-              <tr className="bg-slate-50 font-semibold">
+              <TotalRow>
                 <Td colSpan={2}>Нийт</Td>
                 <Td align="right">{formatMoney(sum(rows.map((r) => r.amount)))}</Td>
                 <Td />
-              </tr>
+              </TotalRow>
             </>
           )}
         </tbody>
@@ -333,20 +326,20 @@ async function InventoryReport() {
               {rows.map((row) => (
                 <tr key={row.id} className={row.isLow ? "bg-amber-50" : ""}>
                   <Td>
-                    <Link href={`/materials/${row.id}`} className="text-brand-600 hover:underline">
+                    <TableLink href={`/materials/${row.id}`}>
                       {row.name}
-                    </Link>
+                    </TableLink>
                     {row.isLow ? (
                       <Badge tone="warning" className="ml-2">
                         Дутагдалтай
                       </Badge>
                     ) : null}
                   </Td>
-                  <Td className="text-slate-500">{row.category}</Td>
+                  <Td className="text-ink-500">{row.category}</Td>
                   <Td align="right">
                     {formatQty(row.quantity)} {row.unit}
                   </Td>
-                  <Td align="right" className="text-slate-500">
+                  <Td align="right" className="text-ink-500">
                     {formatQty(row.minimumStock)}
                   </Td>
                   <Td align="right">{formatMoneyPrecise(row.averageCost)}</Td>
@@ -355,10 +348,10 @@ async function InventoryReport() {
                   </Td>
                 </tr>
               ))}
-              <tr className="bg-slate-50 font-semibold">
+              <TotalRow>
                 <Td colSpan={5}>Нийт нөөцийн өртөг</Td>
                 <Td align="right">{formatMoney(sum(rows.map((r) => r.value)))}</Td>
-              </tr>
+              </TotalRow>
             </>
           )}
         </tbody>
@@ -392,9 +385,9 @@ async function VarianceReport({ range }: RangeProps) {
             <EmptyRow colSpan={7}>Зөрүү бүртгэгдээгүй.</EmptyRow>
           ) : (
             rows.map((row) => (
-              <tr key={row.id}>
+              <Tr key={row.id}>
                 <Td>{formatDate(row.date)}</Td>
-                <Td className="font-mono text-xs">{row.countNo}</Td>
+                <Td>{row.countNo}</Td>
                 <Td>{row.materialName}</Td>
                 <Td align="right">{formatQty(row.systemQuantity)}</Td>
                 <Td align="right">{formatQty(row.countedQuantity)}</Td>
@@ -405,7 +398,7 @@ async function VarianceReport({ range }: RangeProps) {
                 <Td align="right" className={row.variance.isNegative() ? "text-red-600" : ""}>
                   {formatMoney(row.variance)}
                 </Td>
-              </tr>
+              </Tr>
             ))
           )}
         </tbody>
@@ -434,17 +427,17 @@ async function PriceReport({ range }: RangeProps) {
             <EmptyRow colSpan={5} />
           ) : (
             rows.map((row) => (
-              <tr key={row.id}>
+              <Tr key={row.id}>
                 <Td>{formatDate(row.date)}</Td>
                 <Td>
-                  <Link href={`/materials/${row.materialId}`} className="text-brand-600 hover:underline">
+                  <TableLink href={`/materials/${row.materialId}`}>
                     {row.materialName}
-                  </Link>
+                  </TableLink>
                 </Td>
                 <Td>
-                  <Link href={`/purchases/${row.purchaseId}`} className="font-mono text-xs text-brand-600 hover:underline">
-                    {row.purchaseNo}
-                  </Link>
+                  <TableLink href={`/purchases/${row.purchaseId}`}>
+                    <MonoText className="text-brand-600">{row.purchaseNo}</MonoText>
+                  </TableLink>
                 </Td>
                 <Td align="right" className="font-medium">
                   {formatMoneyPrecise(row.unitCost)} / {row.unit}
@@ -452,7 +445,7 @@ async function PriceReport({ range }: RangeProps) {
                 <Td align="right">
                   {formatQty(row.quantity)} {row.unit}
                 </Td>
-              </tr>
+              </Tr>
             ))
           )}
         </tbody>
