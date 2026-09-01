@@ -101,7 +101,7 @@ export async function updateProductAction(_prev: ActionState, formData: FormData
         return fail("Үлдэгдэлтэй бүтээгдэхүүний төрлийг солих боломжгүй.");
       }
       if (parsed.data.productType === "RESALE" && before._count.recipeItems > 0) {
-        return fail("Жортой бүтээгдэхүүнийг дамжуулан борлуулах болгох бол эхлээд жорыг нь хоосолно уу.");
+        return fail("Жортой бүтээгдэхүүнийг бэлэн бүтээгдэхүүн болгох бол эхлээд жорыг нь хоосолно уу.");
       }
     }
 

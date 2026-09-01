@@ -31,7 +31,7 @@ export default async function NewSalePage() {
     sku: product.sku,
     sellingPrice: product.sellingPrice.toString(),
     productType: product.productType,
-    // Дамжуулан борлуулах бүтээгдэхүүнд жор шаардлагагүй — өөрөө нөөцтэй.
+    // Бэлэн бүтээгдэхүүнд жор шаардлагагүй — өөрөө нөөцтэй.
     hasRecipe: product.productType === "RESALE" || product.recipeItems.length > 0,
     recipe: product.recipeItems.map((item) => ({
       rawMaterialId: item.rawMaterialId,
@@ -62,7 +62,7 @@ export default async function NewSalePage() {
       <PageHeader
         backHref="/sales"
         title="Өдрийн борлуулалт бүртгэх"
-        description="Оройн борлуулалтын дүнг оруулна. Жортой бүтээгдэхүүний материал, дамжуулан борлуулах бүтээгдэхүүний нөөц автоматаар хасагдана."
+        description="Оройн борлуулалтын дүнг оруулна. Үйлдвэрлэдэг бүтээгдэхүүний материал, бэлэн бүтээгдэхүүний нөөц автоматаар хасагдана."
       />
       {productOptions.length === 0 ? (
         <EmptyState

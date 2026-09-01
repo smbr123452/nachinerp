@@ -18,7 +18,7 @@ import { fetchSupplierSuggestionsAction } from "./suggestions-action";
 import { createPurchaseAction } from "../actions";
 
 /**
- * Худалдан авах боломжтой зүйл: түүхий эд эсвэл дамжуулан борлуулах
+ * Худалдан авах боломжтой зүйл: түүхий эд эсвэл бэлэн
  * бүтээгдэхүүн. key нь "rm:<id>" / "pr:<id>" — сонголтыг нэг талбараар
  * илэрхийлж, серверт зөв талбар руу задална.
  */
@@ -227,7 +227,7 @@ export function PurchaseForm({
                     >
                       <option value="">— Сонгох —</option>
                       {materials.length > 0 ? (
-                        <optgroup label="Бараа материал">
+                        <optgroup label="Түүхий эд">
                           {materials.map((item) => (
                             <option key={item.key} value={item.key}>
                               {item.name} ({item.sku})
@@ -236,7 +236,7 @@ export function PurchaseForm({
                         </optgroup>
                       ) : null}
                       {products.length > 0 ? (
-                        <optgroup label="Худалдан авч борлуулдаг бүтээгдэхүүн">
+                        <optgroup label="Бэлэн бүтээгдэхүүн">
                           {products.map((item) => (
                             <option key={item.key} value={item.key}>
                               {item.name} ({item.sku})

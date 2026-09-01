@@ -24,7 +24,7 @@ export type ProductOption = {
   recipe: { rawMaterialId: string; baseQuantity: number }[];
 };
 
-/** Нөөцийн нэгж: түүхий эд ("rm:<id>") эсвэл RESALE бүтээгдэхүүн ("pr:<id>"). */
+/** Нөөцийн нэгж: түүхий эд ("rm:<id>") эсвэл бэлэн бүтээгдэхүүн ("pr:<id>"). */
 export type MaterialStock = { key: string; name: string; quantity: number; unit: string };
 
 type Row = { productId: string; quantity: string; unitPrice: string };
@@ -134,7 +134,7 @@ export function SaleForm({
       <Card>
         <CardHeader
           title="Борлуулсан бүтээгдэхүүн"
-          description="Баталгаажуулахад жорын материал болон дамжуулан борлуулах бүтээгдэхүүний нөөц автоматаар хасагдана."
+          description="Баталгаажуулахад жорын материал болон бэлэн бүтээгдэхүүний нөөц автоматаар хасагдана."
         />
         <Table>
           <thead>

@@ -45,7 +45,7 @@ async function main() {
     (p) => !new D(p.quantity).equals(productSums.get(p.id) ?? new D(0)),
   );
   check(
-    "Дамжуулан борлуулах бүтээгдэхүүний дэвтэр ба үлдэгдэл тохирч байна",
+    "Бэлэн бүтээгдэхүүний дэвтэр ба үлдэгдэл тохирч байна",
     productMismatched.length === 0,
     `${resaleProducts.length} бүтээгдэхүүн шалгав` +
       (productMismatched.length
