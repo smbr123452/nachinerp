@@ -41,7 +41,7 @@ export type PostSalesBatchInput = {
 };
 
 export type StockShortage = {
-  /** Түүхий эд бол "rm:<id>", дамжуулан борлуулах бүтээгдэхүүн бол "pr:<id>". */
+  /** Түүхий эд бол "rm:<id>", бэлэн бүтээгдэхүүн бол "pr:<id>". */
   key: string;
   materialName: string;
   required: string;
@@ -139,7 +139,7 @@ export async function planSaleConsumption(
     let unitCost = ZERO;
 
     if (product.productType === "RESALE") {
-      // Дамжуулан борлуулах бүтээгдэхүүн: өөрийн нөөцөөс өөрийн жигнэсэн
+      // Бэлэн бүтээгдэхүүн: өөрийн нөөцөөс өөрийн жигнэсэн
       // дундаж авалтын өртгөөр хасагдана. Жор хэрэггүй.
       unitCost = d(product.averageCost);
 
@@ -294,7 +294,7 @@ export async function postSalesBatch(
       select: { id: true, batchNo: true },
     });
 
-    // Жорын материал ба дамжуулан борлуулах бүтээгдэхүүнийг автоматаар хасна.
+    // Жорын материал ба бэлэн бүтээгдэхүүнийг автоматаар хасна.
     for (const line of consumption) {
       if (line.baseQuantity.lessThanOrEqualTo(0)) continue;
       await applyMovement(tx, {

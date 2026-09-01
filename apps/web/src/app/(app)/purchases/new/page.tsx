@@ -16,7 +16,7 @@ export default async function NewPurchasePage() {
       orderBy: { name: "asc" },
       select: { id: true, name: true, sku: true, unit: true, lastPurchasePrice: true },
     }),
-    // Зөвхөн дамжуулан борлуулах бүтээгдэхүүн худалдан авалтад орно.
+    // Зөвхөн бэлэн бүтээгдэхүүн худалдан авалтад орно.
     prisma.product.findMany({
       where: { isActive: true, productType: "RESALE" },
       orderBy: { name: "asc" },
@@ -56,7 +56,7 @@ export default async function NewPurchasePage() {
       {options.length === 0 ? (
         <EmptyState
           title="Худалдан авах бараа бүртгэгдээгүй байна"
-          description="Эхлээд 'Бараа материал' хэсэгт материалаа, эсвэл 'Бүтээгдэхүүн' хэсэгт худалдан авч борлуулдаг бүтээгдэхүүнээ нэмнэ үү."
+          description="Эхлээд 'Бараа материал' хэсэгт түүхий эдээ, эсвэл 'Бүтээгдэхүүн' хэсэгт бэлэн бүтээгдэхүүнээ нэмнэ үү."
         />
       ) : (
         <PurchaseForm items={options} suppliers={suppliers} today={toDateInput(new Date())} />

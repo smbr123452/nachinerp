@@ -1,4 +1,5 @@
 import "server-only";
+import type { Unit } from "@prisma/client";
 import { d, type Dec } from "@/lib/decimal";
 import { prisma } from "@/lib/prisma";
 
@@ -151,7 +152,8 @@ export async function getPriceHistory(
         },
       },
     },
-    orderBy: { purchase: { date: "desc" } },
+    // Огноо ижил байвал бүртгэсэн дараалал шийднэ — "сүүлийн" нь тодорхой байна.
+    orderBy: [{ purchase: { date: "desc" } }, { purchase: { createdAt: "desc" } }],
     take: limit,
   });
 
@@ -193,4 +195,68 @@ export async function getLastPriceBySupplier(subject: {
     unit: entry.unit,
     date: entry.date,
   }));
+}
+
+export type LastPurchase = {
+  purchaseId: string;
+  purchaseNo: string;
+  date: Date;
+  supplierName: string;
+  /** Бичсэн нэгжээрх үнэ, тухайн нэгжийн хамт. */
+  unitPrice: string;
+  unit: Unit;
+  /** Барааны үндсэн нэгж рүү хөрвүүлсэн өртөг — дундаж өртөгтэй харьцуулж болно. */
+  baseUnitCost: string;
+  quantity: string;
+};
+
+/**
+ * Сүүлийн ХҮЧИНТЭЙ худалдан авалтын үнэ.
+ *
+ * ЗӨВХӨН POSTED баримт тооцогдоно — DRAFT, CANCELLED, REVERSED орохгүй.
+ *
+ * Product.lastPurchasePrice талбарыг ЗОРИУДААР ашиглахгүй: тэр нь
+ * PURCHASE_IN үед бичигддэг ч баримт цуцлахад ухардаггүй тул цуцлагдсан
+ * худалдан авалтын дараа хуучирсан утга үлдэж болзошгүй. Түүхээс гаргаснаар
+ * цуцлалт өөрөө өөрийгөө засна.
+ *
+ * Түүх байхгүй бол null — үнийг таамаглаж зохиохгүй.
+ */
+export async function getLastPurchase(subject: {
+  rawMaterialId?: string | null;
+  productId?: string | null;
+}): Promise<LastPurchase | null> {
+  if (!subject.rawMaterialId && !subject.productId) return null;
+
+  const item = await prisma.purchaseItem.findFirst({
+    where: {
+      ...(subject.rawMaterialId ? { rawMaterialId: subject.rawMaterialId } : {}),
+      ...(subject.productId ? { productId: subject.productId } : {}),
+      purchase: { status: "POSTED" },
+    },
+    include: {
+      purchase: {
+        select: {
+          id: true,
+          purchaseNo: true,
+          date: true,
+          supplier: { select: { name: true } },
+        },
+      },
+    },
+    orderBy: [{ purchase: { date: "desc" } }, { purchase: { createdAt: "desc" } }],
+  });
+
+  if (!item) return null;
+
+  return {
+    purchaseId: item.purchase.id,
+    purchaseNo: item.purchase.purchaseNo,
+    date: item.purchase.date,
+    supplierName: item.purchase.supplier?.name ?? "Нийлүүлэгчгүй",
+    unitPrice: item.unitPrice.toString(),
+    unit: item.unit,
+    baseUnitCost: item.baseUnitCost.toString(),
+    quantity: item.quantity.toString(),
+  };
 }

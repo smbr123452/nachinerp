@@ -1,6 +1,6 @@
 import { Prisma } from "@prisma/client";
 import { PageHeader } from "@/components/layout/PageHeader";
-import { Badge } from "@/components/ui/Badge";
+import { ActiveBadge, Badge } from "@/components/ui/Badge";
 import { Card } from "@/components/ui/Card";
 import { EmptyRow, MonoText, Table, TableLink, Td, Th, Tr } from "@/components/ui/Table";
 import { FilterBar, FilterSelect, SearchInput } from "@/components/ui/SearchFilters";
@@ -14,7 +14,7 @@ import { CategoryManagerButton } from "@/components/categories/CategoryManager";
 import { listCategories } from "@/server/services/categories";
 import { DeleteRecordButton } from "@/components/ui/DeleteRecordButton";
 import { getUsedProductIds } from "@/server/services/master-data";
-import { PRODUCT_TYPE_LABEL } from "@/lib/products";
+import { PRODUCT_TYPE_LABEL, productFinancials, profitTone } from "@/lib/products";
 import { EditProductButton, NewProductButton } from "./ProductsClient";
 import { deleteProductAction } from "./actions";
 
@@ -60,7 +60,7 @@ export default async function ProductsPage({ searchParams }: { searchParams: Sea
     <>
       <PageHeader
         title="Бүтээгдэхүүн"
-        description={`Нийт ${products.length} бүтээгдэхүүн. Үйлдвэрлэдэг бүтээгдэхүүний өртөг жорноос, худалдан авдагийнх нь авалтын дундаж өртгөөс бодогдоно.`}
+        description={`Нийт ${products.length} бүтээгдэхүүн. Үйлдвэрлэдэг бүтээгдэхүүний өртөг жорноос, бэлэн бүтээгдэхүүнийх авалтын жигнэсэн дундаж өртгөөс бодогдоно.`}
         action={
           <>
             <CategoryManagerButton
@@ -110,28 +110,36 @@ export default async function ProductsPage({ searchParams }: { searchParams: Sea
               <Th>Ангилал</Th>
               <Th>Төрөл</Th>
               <Th align="right">Үлдэгдэл</Th>
-              <Th align="right">Зарах үнэ</Th>
               <Th align="right">Өртөг</Th>
-              <Th align="right">Ашиг</Th>
+              <Th align="right">Зарах үнэ</Th>
+              <Th align="right">Нэгж ашиг</Th>
               <Th align="right">Ашгийн %</Th>
+              <Th>Төлөв</Th>
               <Th align="right">Үйлдэл</Th>
             </tr>
           </thead>
           <tbody>
             {products.length === 0 ? (
-              <EmptyRow colSpan={10}>Бүтээгдэхүүн олдсонгүй.</EmptyRow>
+              <EmptyRow colSpan={11}>Бүтээгдэхүүн олдсонгүй.</EmptyRow>
             ) : (
               products.map((product) => {
                 const isResale = product.productType === "RESALE";
                 const hasRecipe = product._count.recipeItems > 0;
-                // Үйлдвэрлэдэг бол жорын өртөг, дамжуулан борлуулдаг бол
-                // өөрийн жигнэсэн дундаж авалтын өртөг.
-                const cost = isResale ? d(product.averageCost) : (costs.get(product.id) ?? ZERO);
-                const price = d(product.sellingPrice);
-                const profit = price.minus(cost);
-                const margin = price.greaterThan(0) ? profit.dividedBy(price).times(100) : ZERO;
-                // Өртөг мэдэгдэж байж ашгийг харуулна.
-                const costKnown = isResale || hasRecipe;
+                // Өртөг, ашиг, ашгийн хувь бүгд нэг хуваалцсан туслахаас —
+                // жагсаалт ба дэлгэрэнгүй хуудас ижил тоо харуулна.
+                const fin = productFinancials({
+                  productType: product.productType,
+                  sellingPrice: product.sellingPrice,
+                  averageCost: product.averageCost,
+                  // Жоргүй үйлдвэрлэх бүтээгдэхүүний өртөг мэдэгдэхгүй.
+                  recipeCost: hasRecipe ? (costs.get(product.id) ?? ZERO) : null,
+                });
+                const profitToneClass =
+                  profitTone(fin.unitProfit) === "positive"
+                    ? "text-emerald-700"
+                    : profitTone(fin.unitProfit) === "negative"
+                      ? "text-red-600"
+                      : "text-ink-700";
                 const isLow =
                   isResale &&
                   product.isActive &&
@@ -144,23 +152,27 @@ export default async function ProductsPage({ searchParams }: { searchParams: Sea
                       <TableLink href={`/products/${product.id}`} strong>
                         {product.name}
                       </TableLink>
-                      <div className="mt-1 flex gap-1">
+                      <div className="mt-1 flex flex-wrap gap-1">
                         {!isResale && !hasRecipe ? <Badge tone="warning">Жоргүй</Badge> : null}
                         {isLow ? <Badge tone="warning">Дутагдалтай</Badge> : null}
-                        {!product.isActive ? <Badge tone="neutral">Идэвхгүй</Badge> : null}
                       </div>
                     </Td>
-                    <Td className="text-ink-500">{product.category?.name ?? "-"}</Td>
+                    <Td className="text-ink-500">{product.category?.name ?? "—"}</Td>
                     <Td className="text-ink-500">{PRODUCT_TYPE_LABEL[product.productType]}</Td>
                     <Td align="right" className={isLow ? "font-semibold text-red-600" : ""}>
-                      {isResale ? `${formatQty(product.quantity)} ${unitLabel(product.unit)}` : "-"}
+                      {isResale ? `${formatQty(product.quantity)} ${unitLabel(product.unit)}` : "—"}
                     </Td>
-                    <Td align="right">{formatMoney(price)}</Td>
-                    <Td align="right">{costKnown ? formatMoney(cost) : "-"}</Td>
-                    <Td align="right" className={profit.isNegative() ? "text-red-600" : ""}>
-                      {costKnown ? formatMoney(profit) : "-"}
+                    <Td align="right">{fin.unitCost ? formatMoney(fin.unitCost) : "—"}</Td>
+                    <Td align="right">{formatMoney(fin.sellingPrice)}</Td>
+                    <Td align="right" className={fin.unitProfit ? profitToneClass : undefined}>
+                      {fin.unitProfit ? formatMoney(fin.unitProfit) : "—"}
                     </Td>
-                    <Td align="right">{costKnown ? formatPercent(margin.toNumber()) : "-"}</Td>
+                    <Td align="right" className={fin.marginPercent ? profitToneClass : undefined}>
+                      {fin.marginPercent ? formatPercent(fin.marginPercent.toNumber()) : "—"}
+                    </Td>
+                    <Td>
+                      <ActiveBadge active={product.isActive} />
+                    </Td>
                     <Td align="right">
                       <EditProductButton
                         categories={categories}
