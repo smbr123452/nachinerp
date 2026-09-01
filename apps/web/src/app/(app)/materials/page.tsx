@@ -13,7 +13,10 @@ import { unitLabel } from "@/lib/units";
 import { inventoryValue } from "@/server/services/inventory";
 import { CategoryManagerButton } from "@/components/categories/CategoryManager";
 import { listCategories } from "@/server/services/categories";
+import { DeleteRecordButton } from "@/components/ui/DeleteRecordButton";
+import { getUsedRawMaterialIds } from "@/server/services/master-data";
 import { EditMaterialButton, NewMaterialButton } from "./MaterialsClient";
+import { deleteRawMaterialAction } from "./actions";
 
 export const metadata = { title: "Бараа материал | Начин ERP" };
 
@@ -45,6 +48,10 @@ export default async function MaterialsPage({ searchParams }: { searchParams: Se
 
   // Шинэ материалд зөвхөн идэвхтэй ангиллыг санал болгоно; шүүлтэнд бүгд харагдана.
   const categories = categoryRows.filter((c) => c.isActive);
+
+  // Түүхэнд ашиглагдсан материалыг устгах боломжгүй — товч идэвхгүй болно.
+  // Жинхэнэ шалгалт нь server action ба үйлчилгээний давхаргад.
+  const usedIds = await getUsedRawMaterialIds(materials.map((m) => m.id));
 
   const rows = materials.map((material) => ({
     material,
@@ -158,6 +165,16 @@ export default async function MaterialsPage({ searchParams }: { searchParams: Se
                         hasStock: !d(material.quantity).isZero(),
                       }}
                     />
+                    {user.role === "OWNER" ? (
+                      <DeleteRecordButton
+                        id={material.id}
+                        action={deleteRawMaterialAction}
+                        title="Бараа материал устгах"
+                        description={`"${material.name}"-г бүр мөсөн устгах уу? Энэ үйлдлийг буцаах боломжгүй.`}
+                        blocked={usedIds.has(material.id)}
+                        blockedReason="Түүхэнд ашиглагдсан тул устгах боломжгүй. Идэвхгүй болгоно уу."
+                      />
+                    ) : null}
                   </Td>
                 </Tr>
               ))

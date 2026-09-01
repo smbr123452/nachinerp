@@ -1,7 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { requireOperator } from "@/lib/auth/guards";
+import { requireOperator, requireOwner } from "@/lib/auth/guards";
 import { getClientIp } from "@/lib/auth/session";
 import { writeAudit } from "@/lib/audit";
 import { prisma } from "@/lib/prisma";
@@ -17,6 +17,7 @@ import {
 } from "@/lib/validation";
 import { isConvertible, unitLabel } from "@/lib/units";
 import { nextEntityCode } from "@/server/services/numbering";
+import { deleteProduct } from "@/server/services/master-data";
 
 export async function createProductAction(_prev: ActionState, formData: FormData): Promise<ActionState> {
   try {
@@ -237,6 +238,28 @@ export async function saveRecipeAction(_prev: ActionState, formData: FormData): 
     revalidatePath(`/products/${productId}`);
     revalidatePath("/products");
     return ok("Жор хадгалагдлаа.");
+  } catch (error) {
+    return toActionError(error);
+  }
+}
+
+/**
+ * Бүтээгдэхүүнийг БҮР МӨСӨН устгах — ЗӨВХӨН OWNER.
+ * Түүхэнд ашиглагдсан бол үйлчилгээний давхарга татгалзана.
+ */
+export async function deleteProductAction(
+  _prev: ActionState,
+  formData: FormData,
+): Promise<ActionState> {
+  try {
+    const user = await requireOwner();
+    const id = String(formData.get("id") ?? "");
+    if (!id) return fail("Бүтээгдэхүүн сонгогдоогүй байна.");
+
+    await deleteProduct({ id, userId: user.id, ipAddress: await getClientIp() });
+
+    revalidatePath("/products");
+    return ok("Бүтээгдэхүүн устгагдлаа.");
   } catch (error) {
     return toActionError(error);
   }

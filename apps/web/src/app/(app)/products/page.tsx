@@ -12,7 +12,10 @@ import { prisma } from "@/lib/prisma";
 import { calculateRecipeCosts } from "@/server/services/recipes";
 import { CategoryManagerButton } from "@/components/categories/CategoryManager";
 import { listCategories } from "@/server/services/categories";
+import { DeleteRecordButton } from "@/components/ui/DeleteRecordButton";
+import { getUsedProductIds } from "@/server/services/master-data";
 import { EditProductButton, NewProductButton, PRODUCT_TYPE_LABEL } from "./ProductsClient";
+import { deleteProductAction } from "./actions";
 
 export const metadata = { title: "Бүтээгдэхүүн | Начин ERP" };
 
@@ -46,7 +49,11 @@ export default async function ProductsPage({ searchParams }: { searchParams: Sea
   // Шинэ бүтээгдэхүүнд зөвхөн идэвхтэй ангиллыг санал болгоно.
   const categories = categoryRows.filter((c) => c.isActive);
 
-  const costs = await calculateRecipeCosts(products.map((p) => p.id));
+  const [costs, usedIds] = await Promise.all([
+    calculateRecipeCosts(products.map((p) => p.id)),
+    // Түүхэнд ашиглагдсан бүтээгдэхүүнийг устгах боломжгүй.
+    getUsedProductIds(products.map((p) => p.id)),
+  ]);
 
   return (
     <>
@@ -170,6 +177,16 @@ export default async function ProductsPage({ searchParams }: { searchParams: Sea
                           hasRecipe,
                         }}
                       />
+                      {user.role === "OWNER" ? (
+                        <DeleteRecordButton
+                          id={product.id}
+                          action={deleteProductAction}
+                          title="Бүтээгдэхүүн устгах"
+                          description={`"${product.name}"-г бүр мөсөн устгах уу? Энэ үйлдлийг буцаах боломжгүй.`}
+                          blocked={usedIds.has(product.id)}
+                          blockedReason="Түүхэнд ашиглагдсан тул устгах боломжгүй. Идэвхгүй болгоно уу."
+                        />
+                      ) : null}
                     </Td>
                   </Tr>
                 );

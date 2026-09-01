@@ -1,7 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { requireOperator } from "@/lib/auth/guards";
+import { requireOperator, requireOwner } from "@/lib/auth/guards";
 import { getClientIp } from "@/lib/auth/session";
 import { writeAudit } from "@/lib/audit";
 import { prisma } from "@/lib/prisma";
@@ -15,6 +15,7 @@ import {
 } from "@/lib/validation";
 import { postManualAdjustment } from "@/server/services/adjustments";
 import { nextEntityCode } from "@/server/services/numbering";
+import { deleteRawMaterial } from "@/server/services/master-data";
 
 export async function createRawMaterialAction(
   _prev: ActionState,
@@ -157,6 +158,28 @@ export async function manualAdjustmentAction(
     revalidatePath("/materials");
     revalidatePath(`/materials/${parsed.data.rawMaterialId}`);
     return ok("Тохируулга бүртгэгдлээ.");
+  } catch (error) {
+    return toActionError(error);
+  }
+}
+
+/**
+ * Бараа материалыг БҮР МӨСӨН устгах — ЗӨВХӨН OWNER.
+ * Түүхэнд ашиглагдсан бол үйлчилгээний давхарга татгалзана.
+ */
+export async function deleteRawMaterialAction(
+  _prev: ActionState,
+  formData: FormData,
+): Promise<ActionState> {
+  try {
+    const user = await requireOwner();
+    const id = String(formData.get("id") ?? "");
+    if (!id) return fail("Материал сонгогдоогүй байна.");
+
+    await deleteRawMaterial({ id, userId: user.id, ipAddress: await getClientIp() });
+
+    revalidatePath("/materials");
+    return ok("Бараа материал устгагдлаа.");
   } catch (error) {
     return toActionError(error);
   }
