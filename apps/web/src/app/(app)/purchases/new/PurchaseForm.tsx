@@ -2,13 +2,15 @@
 
 import { useActionState, useMemo, useState } from "react";
 import type { Unit } from "@prisma/client";
+import { Plus, Trash2 } from "lucide-react";
 import { Alert } from "@/components/ui/Alert";
 import { Button, SubmitButton } from "@/components/ui/Button";
-import { Field, Input, Select } from "@/components/ui/Field";
-import { Card, CardBody, CardHeader } from "@/components/ui/Card";
-import { Table, Td, Th } from "@/components/ui/Table";
+import { Field, FieldGrid, Input, NumberInput, Select } from "@/components/ui/Field";
+import { Card, CardBody, CardFooter, CardHeader } from "@/components/ui/Card";
+import { SummaryPanel } from "@/components/ui/SummaryPanel";
+import { Table, Td, Th, TotalRow, Tr } from "@/components/ui/Table";
 import { IDLE, type ActionState } from "@/lib/action-state";
-import { formatMoney } from "@/lib/format";
+import { formatMoney, formatQty } from "@/lib/format";
 import { compatibleUnits, unitLabel } from "@/lib/units";
 import { createPurchaseAction } from "../actions";
 
@@ -55,6 +57,8 @@ export function PurchaseForm({
   };
 
   const total = rows.reduce((acc, row) => acc + toNumber(row.quantity) * toNumber(row.unitPrice), 0);
+  const filledRows = rows.filter((row) => row.rawMaterialId && toNumber(row.quantity) > 0).length;
+  const totalQuantity = rows.reduce((acc, row) => acc + toNumber(row.quantity), 0);
 
   return (
     <form action={formAction} className="space-y-6">
@@ -63,7 +67,7 @@ export function PurchaseForm({
       <Card>
         <CardHeader title="Баримтын мэдээлэл" />
         <CardBody>
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          <FieldGrid columns={4}>
             <Field label="Огноо" htmlFor="date" required error={state.fieldErrors?.date}>
               <Input id="date" name="date" type="date" defaultValue={today} required />
             </Field>
@@ -87,7 +91,7 @@ export function PurchaseForm({
             <Field label="Тайлбар" htmlFor="note">
               <Input id="note" name="note" placeholder="Сонголтоор" />
             </Field>
-          </div>
+          </FieldGrid>
         </CardBody>
       </Card>
 
@@ -110,7 +114,7 @@ export function PurchaseForm({
               const units = material ? compatibleUnits(material.unit) : [];
               const subtotal = toNumber(row.quantity) * toNumber(row.unitPrice);
               return (
-                <tr key={index}>
+                <Tr key={index}>
                   <Td>
                     <Select
                       name={`items[${index}][rawMaterialId]`}
@@ -126,13 +130,13 @@ export function PurchaseForm({
                     </Select>
                   </Td>
                   <Td align="right">
-                    <input
+                    <NumberInput
                       name={`items[${index}][quantity]`}
                       value={row.quantity}
                       onChange={(event) => update(index, { quantity: event.target.value })}
-                      inputMode="decimal"
                       placeholder="0"
-                      className="tabular w-28 rounded-lg border border-slate-300 px-3 py-2 text-right text-sm focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-100"
+                      aria-label="Тоо хэмжээ"
+                      className="w-28"
                     />
                   </Td>
                   <Td>
@@ -151,13 +155,13 @@ export function PurchaseForm({
                     </Select>
                   </Td>
                   <Td align="right">
-                    <input
+                    <NumberInput
                       name={`items[${index}][unitPrice]`}
                       value={row.unitPrice}
                       onChange={(event) => update(index, { unitPrice: event.target.value })}
-                      inputMode="decimal"
                       placeholder="0"
-                      className="tabular w-32 rounded-lg border border-slate-300 px-3 py-2 text-right text-sm focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-100"
+                      aria-label="Нэгж үнэ"
+                      className="w-32"
                     />
                   </Td>
                   <Td align="right" className="font-medium">
@@ -166,41 +170,53 @@ export function PurchaseForm({
                   <Td align="right">
                     <Button
                       variant="ghost"
-                      size="sm"
+                      size="icon"
                       onClick={() => setRows((current) => current.filter((_, i) => i !== index))}
                       aria-label="Мөр устгах"
+                      disabled={rows.length === 1}
+                      className="text-ink-400 hover:text-red-600"
                     >
-                      ✕
+                      <Trash2 aria-hidden className="h-4 w-4" />
                     </Button>
                   </Td>
-                </tr>
+                </Tr>
               );
             })}
-            <tr className="bg-slate-50 font-semibold">
+            <TotalRow>
               <Td colSpan={4}>Нийт дүн</Td>
-              <Td align="right">{formatMoney(total)}</Td>
+              <Td align="right" className="text-[15px]">
+                {formatMoney(total)}
+              </Td>
               <Td />
-            </tr>
+            </TotalRow>
           </tbody>
         </Table>
-        <CardBody className="border-t border-slate-200">
-          <Button variant="secondary" onClick={() => setRows((current) => [...current, { ...EMPTY_ROW }])}>
-            + Мөр нэмэх
+        <CardFooter>
+          <Button
+            variant="secondary"
+            size="sm"
+            icon={<Plus />}
+            onClick={() => setRows((current) => [...current, { ...EMPTY_ROW }])}
+          >
+            Мөр нэмэх
           </Button>
-        </CardBody>
+        </CardFooter>
       </Card>
 
-      <Card>
-        <CardBody className="flex flex-wrap items-center justify-between gap-4">
-          <div>
-            <p className="text-sm text-slate-500">Нийт төлөх дүн</p>
-            <p className="tabular text-2xl font-semibold text-slate-900">{formatMoney(total)}</p>
-          </div>
-          <SubmitButton size="lg" pendingText="Бүртгэж байна...">
+      <SummaryPanel
+        lines={[
+          { label: "Мөрийн тоо", value: filledRows },
+          { label: "Нийт тоо хэмжээ", value: formatQty(totalQuantity) },
+        ]}
+        totalLabel="Нийт төлөх дүн"
+        total={formatMoney(total)}
+        note="Батлагдмагц нөөц нэмэгдэж, жигнэсэн дундаж өртөг шинэчлэгдэнэ."
+        action={
+          <SubmitButton size="lg" pendingText="Бүртгэж байна..." disabled={filledRows === 0}>
             Худалдан авалт бүртгэх
           </SubmitButton>
-        </CardBody>
-      </Card>
+        }
+      />
     </form>
   );
 }

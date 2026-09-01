@@ -1,9 +1,10 @@
 import { Prisma } from "@prisma/client";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { Badge, StatusBadge } from "@/components/ui/Badge";
-import { Card, CardHeader, StatCard } from "@/components/ui/Card";
+import { Card, CardHeader } from "@/components/ui/Card";
+import { StatCard } from "@/components/ui/StatCard";
 import { CancelDocumentButton } from "@/components/ui/ConfirmAction";
-import { EmptyRow, Table, Td, Th } from "@/components/ui/Table";
+import { EmptyRow, Table, Td, Th, Tr } from "@/components/ui/Table";
 import { DateFilter, FilterBar, FilterSelect } from "@/components/ui/SearchFilters";
 import { requirePageUser } from "@/lib/auth/guards";
 import { sum } from "@/lib/decimal";
@@ -104,10 +105,10 @@ export default async function ExpensesPage({ searchParams }: { searchParams: Sea
               <EmptyRow colSpan={8}>Зардал бүртгэгдээгүй байна.</EmptyRow>
             ) : (
               expenses.map((expense) => (
-                <tr key={expense.id} className="hover:bg-slate-50">
+                <Tr key={expense.id}>
                   <Td>{formatDate(expense.date)}</Td>
                   <Td className="font-medium">{expense.category.name}</Td>
-                  <Td className="text-slate-500">
+                  <Td className="text-ink-500">
                     {expense.description ?? "-"}
                     {expense.receiptUrl ? (
                       <a
@@ -120,14 +121,14 @@ export default async function ExpensesPage({ searchParams }: { searchParams: Sea
                       </a>
                     ) : null}
                   </Td>
-                  <Td className="text-slate-500">{ACCOUNT_LABEL[expense.account]}</Td>
+                  <Td className="text-ink-500">{ACCOUNT_LABEL[expense.account]}</Td>
                   <Td align="right" className="font-medium">
                     {formatMoney(expense.amount)}
                   </Td>
                   <Td>
                     <StatusBadge status={expense.status} />
                   </Td>
-                  <Td className="text-slate-500">{expense.createdBy.name}</Td>
+                  <Td className="text-ink-500">{expense.createdBy.name}</Td>
                   <Td align="right">
                     {expense.status === "POSTED" ? (
                       <CancelDocumentButton
@@ -137,10 +138,10 @@ export default async function ExpensesPage({ searchParams }: { searchParams: Sea
                         description="Мөнгөн гүйлгээ буцаагдаж, бичлэг түүхэнд үлдэнэ."
                       />
                     ) : (
-                      <span className="text-xs text-slate-400">{expense.cancelNote ?? "-"}</span>
+                      <span className="text-xs text-ink-400">{expense.cancelNote ?? "-"}</span>
                     )}
                   </Td>
-                </tr>
+                </Tr>
               ))
             )}
           </tbody>
@@ -165,7 +166,7 @@ export default async function ExpensesPage({ searchParams }: { searchParams: Sea
               <EmptyRow colSpan={3}>Ангилал бүртгэгдээгүй байна.</EmptyRow>
             ) : (
               categories.map((category) => (
-                <tr key={category.id}>
+                <Tr key={category.id}>
                   <Td>{category.name}</Td>
                   <Td>
                     {category.isActive ? (
@@ -179,7 +180,7 @@ export default async function ExpensesPage({ searchParams }: { searchParams: Sea
                       <ToggleCategoryButton id={category.id} isActive={category.isActive} />
                     ) : null}
                   </Td>
-                </tr>
+                </Tr>
               ))
             )}
           </tbody>

@@ -4,8 +4,10 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
 import type { Role } from "@prisma/client";
+import { Menu, X } from "lucide-react";
 import { cn } from "@/lib/cn";
-import { visibleNavItems } from "./nav";
+import { visibleNavGroups } from "./nav";
+import { AccountMenu } from "./AccountMenu";
 
 export function Sidebar({
   role,
@@ -20,63 +22,124 @@ export function Sidebar({
 }) {
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
-  const items = visibleNavItems(role);
+  const groups = visibleNavGroups(role);
+
+  const brand = (
+    <div className="flex items-center gap-2.5">
+      <span
+        aria-hidden
+        className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-brand-600 text-sm font-bold text-white shadow-sm"
+      >
+        Н
+      </span>
+      <span className="min-w-0">
+        <span className="block truncate text-[14px] font-semibold leading-5 text-ink-900">
+          {companyName}
+        </span>
+        <span className="block text-[11px] leading-4 text-ink-500">Удирдлагын систем</span>
+      </span>
+    </div>
+  );
 
   const nav = (
-    <nav className="flex flex-col gap-1 p-3">
-      {items.map((item) => {
-        const active = pathname === item.href || pathname.startsWith(`${item.href}/`);
-        return (
-          <Link
-            key={item.href}
-            href={item.href}
-            onClick={() => setOpen(false)}
-            className={cn(
-              "flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition",
-              active
-                ? "bg-brand-600 text-white"
-                : "text-slate-600 hover:bg-slate-100 hover:text-slate-900",
-            )}
-          >
-            <span aria-hidden className="w-5 text-center text-base">
-              {item.icon}
-            </span>
-            {item.label}
-          </Link>
-        );
-      })}
+    <nav className="flex-1 space-y-5 overflow-y-auto px-3 py-4">
+      {groups.map((group, index) => (
+        <div key={group.label ?? index}>
+          {group.label ? (
+            <p className="mb-1.5 px-3 text-[11px] font-semibold uppercase tracking-wider text-ink-400">
+              {group.label}
+            </p>
+          ) : null}
+          <ul className="space-y-0.5">
+            {group.items.map((item) => {
+              const active = pathname === item.href || pathname.startsWith(`${item.href}/`);
+              const Icon = item.icon;
+              return (
+                <li key={item.href}>
+                  <Link
+                    href={item.href}
+                    // Хуудас бүр сервер дээр динамикаар бэлтгэгддэг тул урьдчилан
+                    // татахгүй: цэсний 11 холбоос бүрийг татвал дашбоардын
+                    // тооцоолол дэмий давтагдаж, шилжилттэй мөргөлдөнө.
+                    prefetch={false}
+                    onClick={() => setOpen(false)}
+                    aria-current={active ? "page" : undefined}
+                    className={cn(
+                      "group flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm font-medium transition-colors",
+                      active
+                        ? "bg-brand-50 text-brand-700"
+                        : "text-ink-600 hover:bg-ink-100 hover:text-ink-900",
+                    )}
+                  >
+                    <Icon
+                      aria-hidden
+                      className={cn(
+                        "h-[18px] w-[18px] shrink-0 transition-colors",
+                        active ? "text-brand-600" : "text-ink-400 group-hover:text-ink-600",
+                      )}
+                    />
+                    <span className="truncate">{item.label}</span>
+                    {active ? (
+                      <span aria-hidden className="ml-auto h-4 w-1 rounded-full bg-brand-600" />
+                    ) : null}
+                  </Link>
+                </li>
+              );
+            })}
+          </ul>
+        </div>
+      ))}
     </nav>
   );
 
   return (
     <>
-      {/* Гар утасны толгой мөр */}
-      <div className="sticky top-0 z-30 flex items-center justify-between border-b border-slate-200 bg-white px-4 py-3 lg:hidden">
-        <span className="font-semibold text-slate-900">{companyName}</span>
+      {/* Гар утас / таблетын толгой мөр */}
+      <div className="no-print sticky top-0 z-40 flex items-center justify-between border-b border-ink-200 bg-white px-4 py-2.5 lg:hidden">
+        {brand}
         <button
           type="button"
-          onClick={() => setOpen((v) => !v)}
-          className="rounded-lg border border-slate-300 px-3 py-1.5 text-sm"
+          onClick={() => setOpen((value) => !value)}
           aria-expanded={open}
+          aria-label={open ? "Цэс хаах" : "Цэс нээх"}
+          className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-ink-300 text-ink-600 transition-colors hover:bg-ink-50"
         >
-          {open ? "Хаах" : "Цэс"}
+          {open ? <X aria-hidden className="h-4 w-4" /> : <Menu aria-hidden className="h-4 w-4" />}
         </button>
       </div>
 
+      {open ? (
+        <button
+          type="button"
+          aria-label="Цэс хаах"
+          onClick={() => setOpen(false)}
+          className="fixed inset-0 z-30 bg-ink-900/20 lg:hidden"
+        />
+      ) : null}
+
       <aside
         className={cn(
-          "border-slate-200 bg-white lg:sticky lg:top-0 lg:flex lg:h-screen lg:w-64 lg:shrink-0 lg:flex-col lg:border-r",
-          open ? "block border-b" : "hidden lg:block",
+          "no-print z-30 flex flex-col border-ink-200 bg-white",
+          "lg:sticky lg:top-0 lg:h-screen lg:w-64 lg:shrink-0 lg:border-r",
+          open
+            ? "fixed inset-y-0 left-0 w-72 max-w-[85vw] border-r shadow-pop"
+            : "hidden lg:flex",
         )}
       >
-        <div className="hidden border-b border-slate-200 px-5 py-4 lg:block">
-          <p className="text-base font-semibold text-slate-900">{companyName}</p>
-          <p className="text-xs text-slate-500">Удирдлагын систем</p>
+        <div className="hidden shrink-0 items-center border-b border-ink-200 px-4 py-3.5 lg:flex">
+          {brand}
         </div>
+
+        {open ? (
+          <div className="flex shrink-0 items-center justify-between border-b border-ink-200 px-4 py-3.5 lg:hidden">
+            {brand}
+          </div>
+        ) : null}
+
         {nav}
-        <div className="mt-auto hidden border-t border-slate-200 px-5 py-4 lg:block">
-          <p className="text-sm font-medium text-slate-800">{userName}</p>
-          <p className="text-xs text-slate-500">{roleLabel}</p>
+
+        <div className="shrink-0 border-t border-ink-200 p-3">
+          <AccountMenu userName={userName} roleLabel={roleLabel} role={role} />
         </div>
       </aside>
     </>

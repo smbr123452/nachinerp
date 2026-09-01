@@ -4,7 +4,7 @@ import { useActionState, useEffect, useState } from "react";
 import { Alert } from "@/components/ui/Alert";
 import { Button, SubmitButton } from "@/components/ui/Button";
 import { Field, Input, Select, Textarea } from "@/components/ui/Field";
-import { Modal } from "@/components/ui/Modal";
+import { Modal, ModalActions } from "@/components/ui/Modal";
 import { IDLE, type ActionState } from "@/lib/action-state";
 import { formatMoney } from "@/lib/format";
 import { bankDepositAction, moneyAdjustmentAction } from "./actions";
@@ -57,12 +57,12 @@ export function BankDepositButton({
             <Input id="deposit-note" name="note" placeholder="Сонголтоор" />
           </Field>
 
-          <div className="flex justify-end gap-2">
+          <ModalActions>
             <Button variant="secondary" onClick={() => setOpen(false)}>
               Болих
             </Button>
             <SubmitButton>Тушаалт бүртгэх</SubmitButton>
-          </div>
+          </ModalActions>
         </form>
       </Modal>
     </>
@@ -115,12 +115,12 @@ export function MoneyAdjustmentButton({ today }: { today: string }) {
             <Textarea id="adj-note" name="note" required placeholder="Тохируулгын шалтгаан" />
           </Field>
 
-          <div className="flex justify-end gap-2">
+          <ModalActions>
             <Button variant="secondary" onClick={() => setOpen(false)}>
               Болих
             </Button>
             <SubmitButton>Бүртгэх</SubmitButton>
-          </div>
+          </ModalActions>
         </form>
       </Modal>
     </>

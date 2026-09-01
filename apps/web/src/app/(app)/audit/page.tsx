@@ -84,27 +84,27 @@ export default async function AuditPage({ searchParams }: { searchParams: Search
               <EmptyRow colSpan={6}>Бичлэг олдсонгүй.</EmptyRow>
             ) : (
               logs.map((log) => (
-                <tr key={log.id} className="align-top hover:bg-slate-50">
+                <tr key={log.id} className="align-top hover:bg-ink-50">
                   <Td className="whitespace-nowrap">{formatDateTime(log.createdAt)}</Td>
                   <Td>{log.user?.name ?? "—"}</Td>
                   <Td className="font-medium">{AUDIT_ACTION_LABEL[log.action] ?? log.action}</Td>
-                  <Td className="text-slate-500">
+                  <Td className="text-ink-500">
                     {log.entityType}
                     {log.entityId ? (
-                      <span className="ml-1 font-mono text-xs text-slate-400">{log.entityId.slice(-6)}</span>
+                      <span className="ml-1 font-mono text-xs text-ink-400">{log.entityId.slice(-6)}</span>
                     ) : null}
                   </Td>
-                  <Td className="max-w-xs text-slate-500">{log.note ?? "-"}</Td>
+                  <Td className="max-w-xs text-ink-500">{log.note ?? "-"}</Td>
                   <Td>
                     {log.oldValue || log.newValue ? (
                       <details className="text-xs">
                         <summary className="cursor-pointer text-brand-600">Харах</summary>
-                        <pre className="mt-2 max-w-md overflow-x-auto rounded bg-slate-50 p-2 text-[11px] text-slate-600">
+                        <pre className="mt-2 max-w-md overflow-x-auto rounded bg-ink-50 p-2 text-[11px] text-ink-600">
                           {JSON.stringify({ өмнө: log.oldValue, дараа: log.newValue }, null, 2)}
                         </pre>
                       </details>
                     ) : (
-                      <span className="text-slate-300">-</span>
+                      <span className="text-ink-300">-</span>
                     )}
                   </Td>
                 </tr>

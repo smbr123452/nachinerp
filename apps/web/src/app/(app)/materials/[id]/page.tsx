@@ -2,13 +2,14 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { Badge, StatusBadge } from "@/components/ui/Badge";
-import { Card, CardHeader, StatCard } from "@/components/ui/Card";
-import { EmptyRow, Table, Td, Th } from "@/components/ui/Table";
+import { Card, CardHeader } from "@/components/ui/Card";
+import { StatCard } from "@/components/ui/StatCard";
+import { EmptyRow, MonoText, Table, TableLink, Td, Th, Tr } from "@/components/ui/Table";
+import { Tabs } from "@/components/ui/Tabs";
 import { requirePageUser } from "@/lib/auth/guards";
 import { d } from "@/lib/decimal";
 import { formatDate, formatDateTime, formatMoney, formatMoneyPrecise, formatQty } from "@/lib/format";
 import { prisma } from "@/lib/prisma";
-import { cn } from "@/lib/cn";
 import { unitLabel } from "@/lib/units";
 import { MOVEMENT_TYPE_LABEL } from "@/lib/movements";
 import { inventoryValue } from "@/server/services/inventory";
@@ -75,15 +76,11 @@ export default async function MaterialDetailPage({
   return (
     <>
       <PageHeader
+        backHref="/materials"
         title={material.name}
         description={`${material.sku} · ${material.category?.name ?? "Ангилалгүй"} · Нэгж: ${unit}`}
         action={
-          <>
-            <Link href="/materials" className="inline-flex h-11 items-center rounded-lg border border-slate-300 bg-white px-4 text-sm font-medium text-slate-700 hover:bg-slate-50">
-              Буцах
-            </Link>
             <AdjustmentButton rawMaterialId={material.id} materialName={material.name} unit={unit} />
-          </>
         }
       />
 
@@ -102,22 +99,10 @@ export default async function MaterialDetailPage({
         />
       </div>
 
-      <div className="no-print mb-4 flex flex-wrap gap-2 border-b border-slate-200">
-        {TABS.map((item) => (
-          <Link
-            key={item.key}
-            href={`/materials/${id}?tab=${item.key}`}
-            className={cn(
-              "-mb-px border-b-2 px-4 py-2 text-sm font-medium",
-              tab === item.key
-                ? "border-brand-600 text-brand-700"
-                : "border-transparent text-slate-500 hover:text-slate-800",
-            )}
-          >
-            {item.label}
-          </Link>
-        ))}
-      </div>
+      <Tabs
+        active={tab}
+        items={TABS.map((item) => ({ ...item, href: `/materials/${id}?tab=${item.key}` }))}
+      />
 
       {tab === "overview" ? (
         <div className="grid gap-4 lg:grid-cols-2">
@@ -125,26 +110,26 @@ export default async function MaterialDetailPage({
             <CardHeader title="Мэдээлэл" />
             <Table>
               <tbody>
-                <tr>
-                  <Td className="w-1/2 text-slate-500">Код</Td>
-                  <Td className="font-mono text-xs">{material.sku}</Td>
-                </tr>
-                <tr>
-                  <Td className="text-slate-500">Ангилал</Td>
+                <Tr>
+                  <Td className="w-1/2 text-ink-500">Код</Td>
+                  <Td><MonoText>{material.sku}</MonoText></Td>
+                </Tr>
+                <Tr>
+                  <Td className="text-ink-500">Ангилал</Td>
                   <Td>{material.category?.name ?? "-"}</Td>
-                </tr>
-                <tr>
-                  <Td className="text-slate-500">Хэмжих нэгж</Td>
+                </Tr>
+                <Tr>
+                  <Td className="text-ink-500">Хэмжих нэгж</Td>
                   <Td>{unit}</Td>
-                </tr>
-                <tr>
-                  <Td className="text-slate-500">Доод хэмжээ</Td>
+                </Tr>
+                <Tr>
+                  <Td className="text-ink-500">Доод хэмжээ</Td>
                   <Td align="right">
                     {formatQty(material.minimumStock)} {unit}
                   </Td>
-                </tr>
-                <tr>
-                  <Td className="text-slate-500">Төлөв</Td>
+                </Tr>
+                <Tr>
+                  <Td className="text-ink-500">Төлөв</Td>
                   <Td>
                     {material.isActive ? (
                       <Badge tone="success">Идэвхтэй</Badge>
@@ -152,11 +137,11 @@ export default async function MaterialDetailPage({
                       <Badge tone="neutral">Идэвхгүй</Badge>
                     )}
                   </Td>
-                </tr>
-                <tr>
-                  <Td className="text-slate-500">Үүсгэсэн</Td>
+                </Tr>
+                <Tr>
+                  <Td className="text-ink-500">Үүсгэсэн</Td>
                   <Td>{formatDate(material.createdAt)}</Td>
-                </tr>
+                </Tr>
               </tbody>
             </Table>
           </Card>
@@ -175,16 +160,16 @@ export default async function MaterialDetailPage({
                   <EmptyRow colSpan={2}>Одоогоор ямар ч жорд ороогүй.</EmptyRow>
                 ) : (
                   recipeUsage.map((item) => (
-                    <tr key={item.id}>
+                    <Tr key={item.id}>
                       <Td>
-                        <Link href={`/products/${item.productId}`} className="text-brand-600 hover:underline">
+                        <TableLink href={`/products/${item.productId}`}>
                           {item.product.name}
-                        </Link>
+                        </TableLink>
                       </Td>
                       <Td align="right">
                         {formatQty(item.quantity)} {unitLabel(item.unit)}
                       </Td>
-                    </tr>
+                    </Tr>
                   ))
                 )}
               </tbody>
@@ -212,20 +197,20 @@ export default async function MaterialDetailPage({
                 <EmptyRow colSpan={6} />
               ) : (
                 purchaseItems.map((item) => (
-                  <tr key={item.id}>
+                  <Tr key={item.id}>
                     <Td>{formatDate(item.purchase.date)}</Td>
                     <Td>
-                      <Link href={`/purchases/${item.purchase.id}`} className="text-brand-600 hover:underline">
+                      <TableLink href={`/purchases/${item.purchase.id}`}>
                         {item.purchase.purchaseNo}
-                      </Link>
+                      </TableLink>
                     </Td>
-                    <Td className="text-slate-500">{item.purchase.supplier?.name ?? "-"}</Td>
+                    <Td className="text-ink-500">{item.purchase.supplier?.name ?? "-"}</Td>
                     <Td align="right">
                       {formatQty(item.quantity)} {unitLabel(item.unit)}
                     </Td>
                     <Td align="right">{formatMoneyPrecise(item.unitPrice)}</Td>
                     <Td align="right">{formatMoney(item.subtotal)}</Td>
-                  </tr>
+                  </Tr>
                 ))
               )}
             </tbody>
@@ -255,7 +240,7 @@ export default async function MaterialDetailPage({
                 movements.map((movement) => {
                   const positive = d(movement.quantity).greaterThan(0);
                   return (
-                    <tr key={movement.id}>
+                    <Tr key={movement.id}>
                       <Td className="whitespace-nowrap">{formatDateTime(movement.createdAt)}</Td>
                       <Td>{MOVEMENT_TYPE_LABEL[movement.movementType]}</Td>
                       <Td align="right" className={positive ? "text-emerald-600" : "text-red-600"}>
@@ -264,9 +249,9 @@ export default async function MaterialDetailPage({
                       </Td>
                       <Td align="right">{formatMoneyPrecise(movement.unitCost)}</Td>
                       <Td align="right">{formatQty(movement.balanceAfter)}</Td>
-                      <Td className="text-slate-500">{movement.note ?? "-"}</Td>
-                      <Td className="text-slate-500">{movement.createdBy.name}</Td>
-                    </tr>
+                      <Td className="text-ink-500">{movement.note ?? "-"}</Td>
+                      <Td className="text-ink-500">{movement.createdBy.name}</Td>
+                    </Tr>
                   );
                 })
               )}
@@ -295,12 +280,12 @@ export default async function MaterialDetailPage({
                 <EmptyRow colSpan={7} />
               ) : (
                 countItems.map((item) => (
-                  <tr key={item.id}>
+                  <Tr key={item.id}>
                     <Td>{formatDate(item.count.date)}</Td>
                     <Td>
-                      <Link href={`/counts/${item.count.id}`} className="text-brand-600 hover:underline">
+                      <TableLink href={`/counts/${item.count.id}`}>
                         {item.count.countNo}
-                      </Link>
+                      </TableLink>
                     </Td>
                     <Td align="right">{formatQty(item.systemQuantity)}</Td>
                     <Td align="right">{formatQty(item.countedQuantity)}</Td>
@@ -314,7 +299,7 @@ export default async function MaterialDetailPage({
                     <Td>
                       <StatusBadge status={item.count.status} />
                     </Td>
-                  </tr>
+                  </Tr>
                 ))
               )}
             </tbody>
@@ -342,12 +327,12 @@ export default async function MaterialDetailPage({
                 <EmptyRow colSpan={4} />
               ) : (
                 purchaseItems.map((item) => (
-                  <tr key={item.id}>
+                  <Tr key={item.id}>
                     <Td>{formatDate(item.purchase.date)}</Td>
                     <Td>
-                      <Link href={`/purchases/${item.purchase.id}`} className="text-brand-600 hover:underline">
+                      <TableLink href={`/purchases/${item.purchase.id}`}>
                         {item.purchase.purchaseNo}
-                      </Link>
+                      </TableLink>
                     </Td>
                     <Td align="right" className="font-medium">
                       {formatMoneyPrecise(item.baseUnitCost)}
@@ -355,7 +340,7 @@ export default async function MaterialDetailPage({
                     <Td align="right">
                       {formatQty(item.baseQuantity)} {unit}
                     </Td>
-                  </tr>
+                  </Tr>
                 ))
               )}
             </tbody>

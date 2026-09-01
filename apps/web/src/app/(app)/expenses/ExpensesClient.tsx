@@ -1,10 +1,11 @@
 "use client";
 
 import { useActionState, useEffect, useState } from "react";
+import { Plus } from "lucide-react";
 import { Alert } from "@/components/ui/Alert";
 import { Button, SubmitButton } from "@/components/ui/Button";
 import { Field, Input, Select, Textarea } from "@/components/ui/Field";
-import { Modal } from "@/components/ui/Modal";
+import { Modal, ModalActions } from "@/components/ui/Modal";
 import { IDLE, type ActionState } from "@/lib/action-state";
 import {
   createExpenseAction,
@@ -24,15 +25,15 @@ export function NewExpenseButton({ categories, today }: { categories: Category[]
 
   return (
     <>
-      <Button onClick={() => setOpen(true)} disabled={categories.length === 0}>
-        + Зардал бүртгэх
+      <Button icon={<Plus />} onClick={() => setOpen(true)} disabled={categories.length === 0}>
+        Зардал бүртгэх
       </Button>
       <Modal
         open={open}
         onClose={() => setOpen(false)}
         title="Шинэ зардал"
         description="Бараа материалын худалдан авалтыг 'Худалдан авалт' хэсэгт бүртгэнэ."
-        wide
+        size="lg"
       >
         <form action={formAction} className="space-y-4">
           {state.status === "error" && state.message ? <Alert tone="error">{state.message}</Alert> : null}
@@ -75,12 +76,12 @@ export function NewExpenseButton({ categories, today }: { categories: Category[]
             </Field>
           </div>
 
-          <div className="flex justify-end gap-2">
+          <ModalActions>
             <Button variant="secondary" onClick={() => setOpen(false)}>
               Болих
             </Button>
             <SubmitButton>Бүртгэх</SubmitButton>
-          </div>
+          </ModalActions>
         </form>
       </Modal>
     </>
@@ -106,12 +107,12 @@ export function NewExpenseCategoryButton() {
           <Field label="Нэр" htmlFor="expense-category-name" required error={state.fieldErrors?.name}>
             <Input id="expense-category-name" name="name" required placeholder="Түлш" />
           </Field>
-          <div className="flex justify-end gap-2">
+          <ModalActions>
             <Button variant="secondary" onClick={() => setOpen(false)}>
               Болих
             </Button>
             <SubmitButton>Хадгалах</SubmitButton>
-          </div>
+          </ModalActions>
         </form>
       </Modal>
     </>

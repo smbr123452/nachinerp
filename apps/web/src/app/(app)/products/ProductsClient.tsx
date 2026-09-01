@@ -1,10 +1,11 @@
 "use client";
 
 import { useActionState, useEffect, useState } from "react";
+import { Plus } from "lucide-react";
 import { Alert } from "@/components/ui/Alert";
 import { Button, SubmitButton } from "@/components/ui/Button";
 import { Checkbox, Field, Input, Select } from "@/components/ui/Field";
-import { Modal } from "@/components/ui/Modal";
+import { Modal, ModalActions } from "@/components/ui/Modal";
 import { IDLE, type ActionState } from "@/lib/action-state";
 import { createProductAction, createProductCategoryAction, updateProductAction } from "./actions";
 
@@ -77,12 +78,12 @@ function ProductForm({
         </div>
       </div>
 
-      <div className="flex justify-end gap-2">
+      <ModalActions>
         <Button variant="secondary" onClick={onDone}>
           Болих
         </Button>
         <SubmitButton>Хадгалах</SubmitButton>
-      </div>
+      </ModalActions>
     </form>
   );
 }
@@ -91,8 +92,10 @@ export function NewProductButton({ categories }: { categories: Category[] }) {
   const [open, setOpen] = useState(false);
   return (
     <>
-      <Button onClick={() => setOpen(true)}>+ Бүтээгдэхүүн нэмэх</Button>
-      <Modal open={open} onClose={() => setOpen(false)} title="Шинэ бүтээгдэхүүн" wide>
+      <Button icon={<Plus />} onClick={() => setOpen(true)}>
+        Бүтээгдэхүүн нэмэх
+      </Button>
+      <Modal open={open} onClose={() => setOpen(false)} title="Шинэ бүтээгдэхүүн" size="lg">
         <ProductForm action={createProductAction} categories={categories} onDone={() => setOpen(false)} />
       </Modal>
     </>
@@ -109,10 +112,10 @@ export function EditProductButton({
   const [open, setOpen] = useState(false);
   return (
     <>
-      <Button variant="secondary" size="sm" onClick={() => setOpen(true)}>
+      <Button variant="ghost" size="sm" onClick={() => setOpen(true)}>
         Засах
       </Button>
-      <Modal open={open} onClose={() => setOpen(false)} title={`${product.name} — засах`} wide>
+      <Modal open={open} onClose={() => setOpen(false)} title={`${product.name} — засах`} size="lg">
         <ProductForm
           action={updateProductAction}
           initial={product}
@@ -145,12 +148,12 @@ export function NewProductCategoryButton() {
           <Field label="Нэр" htmlFor="product-category-name" required error={state.fieldErrors?.name}>
             <Input id="product-category-name" name="name" required placeholder="Пицца" />
           </Field>
-          <div className="flex justify-end gap-2">
+          <ModalActions>
             <Button variant="secondary" onClick={() => setOpen(false)}>
               Болих
             </Button>
             <SubmitButton>Хадгалах</SubmitButton>
-          </div>
+          </ModalActions>
         </form>
       </Modal>
     </>

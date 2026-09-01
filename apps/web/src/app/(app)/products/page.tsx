@@ -1,9 +1,8 @@
-import Link from "next/link";
 import { Prisma } from "@prisma/client";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { Badge } from "@/components/ui/Badge";
 import { Card } from "@/components/ui/Card";
-import { EmptyRow, Table, Td, Th } from "@/components/ui/Table";
+import { EmptyRow, MonoText, Table, TableLink, Td, Th, Tr } from "@/components/ui/Table";
 import { FilterBar, FilterSelect, SearchInput } from "@/components/ui/SearchFilters";
 import { requirePageUser } from "@/lib/auth/guards";
 import { d, ZERO } from "@/lib/decimal";
@@ -97,18 +96,18 @@ export default async function ProductsPage({ searchParams }: { searchParams: Sea
                 const margin = price.greaterThan(0) ? profit.dividedBy(price).times(100) : ZERO;
                 const hasRecipe = product._count.recipeItems > 0;
                 return (
-                  <tr key={product.id} className="hover:bg-slate-50">
-                    <Td className="font-mono text-xs">{product.sku}</Td>
+                  <Tr key={product.id}>
+                    <Td><MonoText>{product.sku}</MonoText></Td>
                     <Td>
-                      <Link href={`/products/${product.id}`} className="font-medium text-brand-600 hover:underline">
+                      <TableLink href={`/products/${product.id}`} strong>
                         {product.name}
-                      </Link>
+                      </TableLink>
                       <div className="mt-1 flex gap-1">
                         {!hasRecipe ? <Badge tone="warning">Жоргүй</Badge> : null}
                         {!product.isActive ? <Badge tone="neutral">Идэвхгүй</Badge> : null}
                       </div>
                     </Td>
-                    <Td className="text-slate-500">{product.category?.name ?? "-"}</Td>
+                    <Td className="text-ink-500">{product.category?.name ?? "-"}</Td>
                     <Td align="right">{formatMoney(price)}</Td>
                     <Td align="right">{hasRecipe ? formatMoney(cost) : "-"}</Td>
                     <Td align="right" className={profit.isNegative() ? "text-red-600" : ""}>
@@ -128,7 +127,7 @@ export default async function ProductsPage({ searchParams }: { searchParams: Sea
                         }}
                       />
                     </Td>
-                  </tr>
+                  </Tr>
                 );
               })
             )}

@@ -3,7 +3,7 @@ import { PageHeader } from "@/components/layout/PageHeader";
 import { StatusBadge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
-import { EmptyRow, Table, Td, Th } from "@/components/ui/Table";
+import { EmptyRow, Table, TableLink, Td, Th, Tr } from "@/components/ui/Table";
 import { requirePageUser } from "@/lib/auth/guards";
 import { d, sum } from "@/lib/decimal";
 import { formatDate, formatMoney } from "@/lib/format";
@@ -53,12 +53,12 @@ export default async function CountsPage() {
                 const varianceRows = count.items.filter((i) => !d(i.differenceQuantity).isZero());
                 const variance = sum(count.items.map((i) => i.varianceAmount));
                 return (
-                  <tr key={count.id} className="hover:bg-slate-50">
+                  <Tr key={count.id}>
                     <Td>{formatDate(count.date)}</Td>
                     <Td>
-                      <Link href={`/counts/${count.id}`} className="font-medium text-brand-600 hover:underline">
+                      <TableLink href={`/counts/${count.id}`} strong>
                         {count.countNo}
-                      </Link>
+                      </TableLink>
                     </Td>
                     <Td align="right">{count.items.length}</Td>
                     <Td align="right">{count.status === "POSTED" ? varianceRows.length : "-"}</Td>
@@ -71,8 +71,8 @@ export default async function CountsPage() {
                     <Td>
                       <StatusBadge status={count.status} />
                     </Td>
-                    <Td className="text-slate-500">{count.createdBy.name}</Td>
-                  </tr>
+                    <Td className="text-ink-500">{count.createdBy.name}</Td>
+                  </Tr>
                 );
               })
             )}

@@ -1,11 +1,11 @@
-import Link from "next/link";
 import { notFound } from "next/navigation";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { Alert } from "@/components/ui/Alert";
 import { StatusBadge } from "@/components/ui/Badge";
-import { Card, CardHeader, StatCard } from "@/components/ui/Card";
+import { Card, CardHeader } from "@/components/ui/Card";
+import { StatCard } from "@/components/ui/StatCard";
 import { CancelDocumentButton } from "@/components/ui/ConfirmAction";
-import { Table, Td, Th } from "@/components/ui/Table";
+import { Table, TableLink, Td, Th, TotalRow } from "@/components/ui/Table";
 import { requirePageUser } from "@/lib/auth/guards";
 import { d, sum } from "@/lib/decimal";
 import { formatDate, formatDateTime, formatMoney, formatQty } from "@/lib/format";
@@ -47,17 +47,10 @@ export default async function CountDetailPage({ params }: { params: Params }) {
   return (
     <>
       <PageHeader
+        backHref="/counts"
         title={`Тооллого ${count.countNo}`}
         description={`${formatDate(count.date)} · ${count.items.length} нэр төрөл`}
-        action={
-          <>
-            <Link
-              href="/counts"
-              className="inline-flex h-11 items-center rounded-lg border border-slate-300 bg-white px-4 text-sm font-medium text-slate-700 hover:bg-slate-50"
-            >
-              Буцах
-            </Link>
-            {isDraft ? (
+        action={isDraft ? (
               <CancelDocumentButton
                 id={count.id}
                 action={cancelCountAction}
@@ -65,15 +58,13 @@ export default async function CountDetailPage({ params }: { params: Params }) {
                 description="Ноорог тооллого цуцлагдана. Нөөцөд өөрчлөлт орохгүй."
               />
             ) : null}
-          </>
-        }
       />
 
       <div className="mb-4 flex flex-wrap items-center gap-3">
         <StatusBadge status={count.status} />
-        <span className="text-sm text-slate-500">Бүртгэсэн: {count.createdBy.name}</span>
+        <span className="text-sm text-ink-500">Бүртгэсэн: {count.createdBy.name}</span>
         {count.completedAt ? (
-          <span className="text-sm text-slate-500">Баталгаажсан: {formatDateTime(count.completedAt)}</span>
+          <span className="text-sm text-ink-500">Баталгаажсан: {formatDateTime(count.completedAt)}</span>
         ) : null}
       </div>
 
@@ -122,9 +113,9 @@ export default async function CountDetailPage({ params }: { params: Params }) {
                   return (
                     <tr key={item.id} className={difference.isZero() ? "" : "bg-amber-50"}>
                       <Td>
-                        <Link href={`/materials/${item.rawMaterialId}`} className="text-brand-600 hover:underline">
+                        <TableLink href={`/materials/${item.rawMaterialId}`}>
                           {item.rawMaterial.name}
-                        </Link>
+                        </TableLink>
                       </Td>
                       <Td align="right">
                         {formatQty(item.systemQuantity)} {unitLabel(item.rawMaterial.unit)}
@@ -143,7 +134,7 @@ export default async function CountDetailPage({ params }: { params: Params }) {
                         {difference.greaterThan(0) ? "+" : ""}
                         {formatQty(difference)}
                       </Td>
-                      <Td align="right" className="text-slate-500">
+                      <Td align="right" className="text-ink-500">
                         {formatMoney(item.weightedAverageCost)}
                       </Td>
                       <Td align="right" className={d(item.varianceAmount).isNegative() ? "text-red-600" : ""}>
@@ -152,12 +143,12 @@ export default async function CountDetailPage({ params }: { params: Params }) {
                     </tr>
                   );
                 })}
-                <tr className="bg-slate-50 font-semibold">
+                <TotalRow>
                   <Td colSpan={5}>Нийт</Td>
                   <Td align="right" className={totalVariance.isNegative() ? "text-red-600" : "text-emerald-600"}>
                     {formatMoney(totalVariance)}
                   </Td>
-                </tr>
+                </TotalRow>
               </tbody>
             </Table>
           </Card>

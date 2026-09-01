@@ -1,7 +1,7 @@
 import { PageHeader } from "@/components/layout/PageHeader";
 import { Badge } from "@/components/ui/Badge";
 import { Card, CardBody, CardHeader } from "@/components/ui/Card";
-import { EmptyRow, Table, Td, Th } from "@/components/ui/Table";
+import { EmptyRow, Table, Td, Th, Tr } from "@/components/ui/Table";
 import { requirePageOwner } from "@/lib/auth/guards";
 import { ROLE_LABEL } from "@/lib/auth/session";
 import { formatDate } from "@/lib/format";
@@ -50,9 +50,9 @@ export default async function SettingsPage() {
               <EmptyRow colSpan={6} />
             ) : (
               users.map((user) => (
-                <tr key={user.id}>
+                <Tr key={user.id}>
                   <Td className="font-medium">{user.name}</Td>
-                  <Td className="text-slate-500">{user.email}</Td>
+                  <Td className="text-ink-500">{user.email}</Td>
                   <Td>
                     <Badge tone={user.role === "OWNER" ? "info" : "neutral"}>{ROLE_LABEL[user.role]}</Badge>
                   </Td>
@@ -63,7 +63,7 @@ export default async function SettingsPage() {
                       <Badge tone="danger">Идэвхгүй</Badge>
                     )}
                   </Td>
-                  <Td className="text-slate-500">{formatDate(user.createdAt)}</Td>
+                  <Td className="text-ink-500">{formatDate(user.createdAt)}</Td>
                   <Td align="right">
                     <EditUserButton
                       user={{
@@ -75,7 +75,7 @@ export default async function SettingsPage() {
                       }}
                     />
                   </Td>
-                </tr>
+                </Tr>
               ))
             )}
           </tbody>
