@@ -1,13 +1,12 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { requireOperator } from "@/lib/auth/guards";
+import { requireOperator, requireOwner } from "@/lib/auth/guards";
 import { getClientIp } from "@/lib/auth/session";
 import { writeAudit } from "@/lib/audit";
 import { prisma } from "@/lib/prisma";
 import { fail, isUniqueViolation, ok, toActionError, type ActionState } from "@/lib/action-result";
 import {
-  categorySchema,
   fieldErrors,
   formNumber,
   manualAdjustmentSchema,
@@ -15,6 +14,8 @@ import {
   rawMaterialUpdateSchema,
 } from "@/lib/validation";
 import { postManualAdjustment } from "@/server/services/adjustments";
+import { nextEntityCode } from "@/server/services/numbering";
+import { deleteRawMaterial } from "@/server/services/master-data";
 
 export async function createRawMaterialAction(
   _prev: ActionState,
@@ -23,7 +24,6 @@ export async function createRawMaterialAction(
   try {
     const user = await requireOperator();
     const parsed = rawMaterialSchema.safeParse({
-      sku: formData.get("sku"),
       name: formData.get("name"),
       categoryId: formData.get("categoryId"),
       unit: formData.get("unit"),
@@ -32,9 +32,12 @@ export async function createRawMaterialAction(
     });
     if (!parsed.success) return fail("Мэдээллээ шалгана уу.", fieldErrors(parsed.error));
 
+    // Код нь sequence-ээс — зэрэгцээ хүсэлтэд ч давхцахгүй.
+    const sku = await nextEntityCode("rawMaterial");
+
     const material = await prisma.rawMaterial.create({
       data: {
-        sku: parsed.data.sku,
+        sku,
         name: parsed.data.name,
         categoryId: parsed.data.categoryId ?? null,
         unit: parsed.data.unit,
@@ -68,7 +71,6 @@ export async function updateRawMaterialAction(
     const user = await requireOperator();
     const parsed = rawMaterialUpdateSchema.safeParse({
       id: formData.get("id"),
-      sku: formData.get("sku"),
       name: formData.get("name"),
       categoryId: formData.get("categoryId"),
       unit: formData.get("unit"),
@@ -89,7 +91,7 @@ export async function updateRawMaterialAction(
     const updated = await prisma.rawMaterial.update({
       where: { id: parsed.data.id },
       data: {
-        sku: parsed.data.sku,
+        // Код өөрчлөгдөхгүй — түүхэн баримтуудын холбоос тогтвортой байна.
         name: parsed.data.name,
         categoryId: parsed.data.categoryId ?? null,
         unit: parsed.data.unit,
@@ -129,22 +131,6 @@ export async function updateRawMaterialAction(
   }
 }
 
-export async function createMaterialCategoryAction(
-  _prev: ActionState,
-  formData: FormData,
-): Promise<ActionState> {
-  try {
-    await requireOperator();
-    const parsed = categorySchema.safeParse({ name: formData.get("name") });
-    if (!parsed.success) return fail("Нэрээ шалгана уу.", fieldErrors(parsed.error));
-    await prisma.rawMaterialCategory.create({ data: { name: parsed.data.name } });
-    revalidatePath("/materials");
-    return ok("Ангилал нэмэгдлээ.");
-  } catch (error) {
-    if (isUniqueViolation(error)) return fail("Ийм нэртэй ангилал бүртгэлтэй байна.");
-    return toActionError(error);
-  }
-}
 
 export async function manualAdjustmentAction(
   _prev: ActionState,
@@ -172,6 +158,28 @@ export async function manualAdjustmentAction(
     revalidatePath("/materials");
     revalidatePath(`/materials/${parsed.data.rawMaterialId}`);
     return ok("Тохируулга бүртгэгдлээ.");
+  } catch (error) {
+    return toActionError(error);
+  }
+}
+
+/**
+ * Бараа материалыг БҮР МӨСӨН устгах — ЗӨВХӨН OWNER.
+ * Түүхэнд ашиглагдсан бол үйлчилгээний давхарга татгалзана.
+ */
+export async function deleteRawMaterialAction(
+  _prev: ActionState,
+  formData: FormData,
+): Promise<ActionState> {
+  try {
+    const user = await requireOwner();
+    const id = String(formData.get("id") ?? "");
+    if (!id) return fail("Материал сонгогдоогүй байна.");
+
+    await deleteRawMaterial({ id, userId: user.id, ipAddress: await getClientIp() });
+
+    revalidatePath("/materials");
+    return ok("Бараа материал устгагдлаа.");
   } catch (error) {
     return toActionError(error);
   }

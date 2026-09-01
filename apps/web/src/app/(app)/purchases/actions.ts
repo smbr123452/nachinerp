@@ -14,7 +14,7 @@ export async function createPurchaseAction(_prev: ActionState, formData: FormDat
   let purchaseId: string | null = null;
   try {
     const user = await requireOperator();
-    const rows = parseRows(formData, "items", ["rawMaterialId", "quantity", "unit", "unitPrice"]);
+    const rows = parseRows(formData, "items", ["itemKey", "quantity", "unit", "unitPrice"]);
     const parsed = purchaseSchema.safeParse({
       date: formData.get("date"),
       supplierId: formData.get("supplierId"),
@@ -40,6 +40,7 @@ export async function createPurchaseAction(_prev: ActionState, formData: FormDat
 
   revalidatePath("/purchases");
   revalidatePath("/materials");
+  revalidatePath("/products");
   revalidatePath("/dashboard");
   redirect(`/purchases/${purchaseId}`);
 }

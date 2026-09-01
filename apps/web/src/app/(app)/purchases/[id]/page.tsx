@@ -2,21 +2,24 @@ import { notFound } from "next/navigation";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { StatusBadge } from "@/components/ui/Badge";
 import { Alert } from "@/components/ui/Alert";
-import { Card, CardHeader } from "@/components/ui/Card";
+import { Card, CardBody, CardHeader } from "@/components/ui/Card";
 import { CancelDocumentButton } from "@/components/ui/ConfirmAction";
 import { Table, TableLink, Td, Th, TotalRow, Tr } from "@/components/ui/Table";
 import { requirePageUser } from "@/lib/auth/guards";
 import { formatDate, formatDateTime, formatMoney, formatMoneyPrecise, formatQty } from "@/lib/format";
 import { prisma } from "@/lib/prisma";
 import { unitLabel } from "@/lib/units";
+import { subjectDisplay } from "@/lib/stock-subject";
 import { MOVEMENT_TYPE_LABEL } from "@/lib/movements";
 import { PURCHASE_PAYMENT_LABEL } from "@/server/services/purchases";
+import { listPurchaseAttachments } from "@/server/services/attachments";
+import { PurchaseAttachments } from "./Attachments";
 import { cancelPurchaseAction } from "../actions";
 
 type Params = Promise<{ id: string }>;
 
 export default async function PurchaseDetailPage({ params }: { params: Params }) {
-  await requirePageUser();
+  const user = await requirePageUser();
   const { id } = await params;
 
   const purchase = await prisma.purchase.findUnique({
@@ -24,14 +27,19 @@ export default async function PurchaseDetailPage({ params }: { params: Params })
     include: {
       supplier: true,
       createdBy: { select: { name: true } },
-      items: { include: { rawMaterial: true } },
+      items: { include: { rawMaterial: true, product: true } },
     },
   });
   if (!purchase) notFound();
 
+  const attachments = await listPurchaseAttachments(purchase.id);
+
   const movements = await prisma.inventoryMovement.findMany({
     where: { referenceId: purchase.id, referenceType: { in: ["PURCHASE", "PURCHASE_CANCEL"] } },
-    include: { rawMaterial: { select: { name: true, unit: true } } },
+    include: {
+      rawMaterial: { select: { name: true, unit: true } },
+      product: { select: { name: true, unit: true } },
+    },
     orderBy: { createdAt: "asc" },
   });
 
@@ -82,12 +90,16 @@ export default async function PurchaseDetailPage({ params }: { params: Params })
             </tr>
           </thead>
           <tbody>
-            {purchase.items.map((item) => (
+            {purchase.items.map((item) => {
+              const subject = subjectDisplay(item);
+              return (
               <Tr key={item.id}>
                 <Td>
-                  <TableLink href={`/materials/${item.rawMaterialId}`}>
-                    {item.rawMaterial.name}
-                  </TableLink>
+                  {subject.href ? (
+                    <TableLink href={subject.href}>{subject.name}</TableLink>
+                  ) : (
+                    subject.name
+                  )}
                 </Td>
                 <Td align="right">
                   {formatQty(item.quantity)} {unitLabel(item.unit)}
@@ -97,11 +109,13 @@ export default async function PurchaseDetailPage({ params }: { params: Params })
                   {formatMoney(item.subtotal)}
                 </Td>
                 <Td align="right" className="text-ink-500">
-                  {formatQty(item.baseQuantity)} {unitLabel(item.rawMaterial.unit)} ·{" "}
+                  {formatQty(item.baseQuantity)}{" "}
+                  {subject.unit ? unitLabel(subject.unit) : ""} ·{" "}
                   {formatMoneyPrecise(item.baseUnitCost)}
                 </Td>
               </Tr>
-            ))}
+              );
+            })}
             <TotalRow>
               <Td colSpan={3}>Нийт</Td>
               <Td align="right">{formatMoney(purchase.totalAmount)}</Td>
@@ -109,6 +123,20 @@ export default async function PurchaseDetailPage({ params }: { params: Params })
             </TotalRow>
           </tbody>
         </Table>
+      </Card>
+
+      <Card className="mb-6">
+        <CardHeader
+          title="Баримт / нэхэмжлэх"
+          description="Зураг эсвэл PDF хавсаргана. Зөвхөн нэвтэрсэн хэрэглэгч үзнэ."
+        />
+        <CardBody>
+          <PurchaseAttachments
+            purchaseId={purchase.id}
+            attachments={attachments}
+            canDelete={user.role === "OWNER"}
+          />
+        </CardBody>
       </Card>
 
       <Card>
@@ -128,7 +156,7 @@ export default async function PurchaseDetailPage({ params }: { params: Params })
             {movements.map((movement) => (
               <Tr key={movement.id}>
                 <Td className="whitespace-nowrap">{formatDateTime(movement.createdAt)}</Td>
-                <Td>{movement.rawMaterial.name}</Td>
+                <Td>{subjectDisplay(movement).name}</Td>
                 <Td>{MOVEMENT_TYPE_LABEL[movement.movementType]}</Td>
                 <Td align="right">{formatQty(movement.quantity)}</Td>
                 <Td align="right">{formatMoneyPrecise(movement.unitCost)}</Td>

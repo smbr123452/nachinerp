@@ -2,7 +2,7 @@
  * Огнооны туслах функцууд. Сервер дээр бүх тооцоо нэг цагийн бүсээр
  * (APP_TIMEZONE_OFFSET_HOURS, анхдагч UTC+8 = Улаанбаатар) явагдана.
  */
-const OFFSET_HOURS = Number(process.env.APP_TIMEZONE_OFFSET_HOURS ?? 8);
+export const OFFSET_HOURS = Number(process.env.APP_TIMEZONE_OFFSET_HOURS ?? 8);
 const OFFSET_MS = OFFSET_HOURS * 60 * 60 * 1000;
 
 /** Тухайн орон нутгийн өдрийн 00:00-ийг UTC Date болгож буцаана. */

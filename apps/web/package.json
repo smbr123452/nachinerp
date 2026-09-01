@@ -13,7 +13,8 @@
     "db:push": "prisma db push",
     "db:seed": "prisma db seed",
     "typecheck": "tsc --noEmit",
-    "verify": "tsx scripts/verify-integrity.ts"
+    "verify": "tsx scripts/verify-integrity.ts",
+    "test:master-data": "tsx --conditions=react-server scripts/test-master-data.ts"
   },
   "dependencies": {
     "@prisma/client": "^6.0.0",

@@ -2,7 +2,7 @@ import "server-only";
 import { d, money } from "@/lib/decimal";
 import { prisma } from "@/lib/prisma";
 import { writeAudit } from "@/lib/audit";
-import { applyMovement } from "./inventory";
+import { applyMovement, rawMaterialSubject } from "./inventory";
 import { recordMoneyTransaction } from "./money";
 
 import type { ManualMovementType } from "@/lib/movements";
@@ -20,7 +20,7 @@ export async function postManualAdjustment(params: {
 
   await prisma.$transaction(async (tx) => {
     const result = await applyMovement(tx, {
-      rawMaterialId: params.rawMaterialId,
+      subject: rawMaterialSubject(params.rawMaterialId),
       movementType: params.movementType,
       quantity: params.quantity,
       costPolicy: { mode: "AVERAGE" },

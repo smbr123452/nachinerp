@@ -11,6 +11,7 @@ import { d, sum, ZERO } from "@/lib/decimal";
 import { formatDate, formatDateTime, formatMoney, formatMoneyPrecise, formatPercent, formatQty } from "@/lib/format";
 import { prisma } from "@/lib/prisma";
 import { unitLabel } from "@/lib/units";
+import { subjectDisplay } from "@/lib/stock-subject";
 import { MOVEMENT_TYPE_LABEL } from "@/lib/movements";
 import { cancelSaleBatchAction } from "../actions";
 
@@ -31,7 +32,10 @@ export default async function SaleDetailPage({ params }: { params: Params }) {
 
   const movements = await prisma.inventoryMovement.findMany({
     where: { referenceId: batch.id, referenceType: { in: ["SALE", "SALE_CANCEL"] } },
-    include: { rawMaterial: { select: { name: true, unit: true } } },
+    include: {
+      rawMaterial: { select: { name: true, unit: true } },
+      product: { select: { name: true, unit: true } },
+    },
     orderBy: { createdAt: "asc" },
   });
 
@@ -167,18 +171,21 @@ export default async function SaleDetailPage({ params }: { params: Params }) {
             </tr>
           </thead>
           <tbody>
-            {movements.map((movement) => (
+            {movements.map((movement) => {
+              const subject = subjectDisplay(movement);
+              return (
               <Tr key={movement.id}>
-                <Td>{movement.rawMaterial.name}</Td>
+                <Td>{subject.name}</Td>
                 <Td className="text-ink-500">{MOVEMENT_TYPE_LABEL[movement.movementType]}</Td>
                 <Td align="right">
-                  {formatQty(movement.quantity)} {unitLabel(movement.rawMaterial.unit)}
+                  {formatQty(movement.quantity)} {subject.unit ? unitLabel(subject.unit) : ""}
                 </Td>
                 <Td align="right">{formatMoneyPrecise(movement.unitCost)}</Td>
                 <Td align="right">{formatMoney(movement.totalCost)}</Td>
                 <Td align="right">{formatQty(movement.balanceAfter)}</Td>
               </Tr>
-            ))}
+              );
+            })}
           </tbody>
         </Table>
       </Card>

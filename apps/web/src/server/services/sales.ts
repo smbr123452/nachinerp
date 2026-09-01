@@ -4,7 +4,13 @@ import { convertQuantity, unitLabel } from "@/lib/units";
 import { prisma } from "@/lib/prisma";
 import type { Tx } from "@/lib/prisma";
 import { writeAudit } from "@/lib/audit";
-import { applyMovement } from "./inventory";
+import {
+  applyMovement,
+  productSubject,
+  rawMaterialSubject,
+  subjectOf,
+  type StockSubject,
+} from "./inventory";
 import { recordMoneyTransaction } from "./money";
 import { nextDocumentNumber } from "./numbering";
 
@@ -35,7 +41,8 @@ export type PostSalesBatchInput = {
 };
 
 export type StockShortage = {
-  rawMaterialId: string;
+  /** Түүхий эд бол "rm:<id>", дамжуулан борлуулах бүтээгдэхүүн бол "pr:<id>". */
+  key: string;
   materialName: string;
   required: string;
   available: string;
@@ -62,14 +69,25 @@ export class MissingRecipeError extends Error {
   }
 }
 
+/**
+ * Борлуулалтад хасагдах нэг мөр.
+ *
+ * MANUFACTURED бүтээгдэхүүн — жорынх нь материалууд хасагдана.
+ * RESALE бүтээгдэхүүн       — өөрөө өөрийн нөөцөөс хасагдана.
+ */
 type Consumption = {
-  rawMaterialId: string;
+  subject: StockSubject;
+  key: string;
   materialName: string;
   baseQuantity: Dec;
   averageCost: Dec;
   unit: string;
   available: Dec;
 };
+
+function consumptionKey(subject: StockSubject): string {
+  return subject.kind === "rawMaterial" ? `rm:${subject.id}` : `pr:${subject.id}`;
+}
 
 type PreparedSaleLine = {
   productId: string;
@@ -82,7 +100,11 @@ type PreparedSaleLine = {
 };
 
 /**
- * Жорын дагуу материалын хэрэглээ ба борлуулсан бүтээгдэхүүний өртгийг тооцно.
+ * Борлуулалтад хасагдах нөөц ба борлуулсан бүтээгдэхүүний өртгийг тооцно.
+ *
+ *   MANUFACTURED — жорынх нь материалууд, тэдгээрийн одоогийн дундаж өртгөөр
+ *   RESALE       — бүтээгдэхүүн өөрөө, өөрийн дундаж авалтын өртгөөр
+ *
  * Уншилтын үйлдэл — урьдчилан шалгахад ч, батлахад ч ашиглагдана.
  */
 export async function planSaleConsumption(
@@ -113,28 +135,55 @@ export async function planSaleConsumption(
     if (unitPrice.lessThan(0)) {
       throw new Error(`"${product.name}" — үнэ сөрөг байж болохгүй.`);
     }
-    if (product.recipeItems.length === 0) missingRecipe.push(product.name);
-
+    // --- Өртөг ба хэрэглээ: бүтээгдэхүүний төрлөөс хамаарна ------------------
     let unitCost = ZERO;
-    for (const recipeItem of product.recipeItems) {
-      const material = recipeItem.rawMaterial;
-      const perUnitBase = convertQuantity(recipeItem.quantity, recipeItem.unit, material.unit);
-      const averageCost = d(material.averageCost);
-      unitCost = unitCost.plus(perUnitBase.times(averageCost));
 
-      const needed = perUnitBase.times(quantity);
-      const existing = consumptionMap.get(material.id);
+    if (product.productType === "RESALE") {
+      // Дамжуулан борлуулах бүтээгдэхүүн: өөрийн нөөцөөс өөрийн жигнэсэн
+      // дундаж авалтын өртгөөр хасагдана. Жор хэрэггүй.
+      unitCost = d(product.averageCost);
+
+      const key = consumptionKey(productSubject(product.id));
+      const existing = consumptionMap.get(key);
       if (existing) {
-        existing.baseQuantity = existing.baseQuantity.plus(needed);
+        existing.baseQuantity = existing.baseQuantity.plus(quantity);
       } else {
-        consumptionMap.set(material.id, {
-          rawMaterialId: material.id,
-          materialName: material.name,
-          baseQuantity: needed,
-          averageCost,
-          unit: unitLabel(material.unit),
-          available: d(material.quantity),
+        consumptionMap.set(key, {
+          subject: productSubject(product.id),
+          key,
+          materialName: product.name,
+          baseQuantity: quantity,
+          averageCost: unitCost,
+          unit: unitLabel(product.unit),
+          available: d(product.quantity),
         });
+      }
+    } else {
+      // Үйлдвэрлэдэг бүтээгдэхүүн: жорын материалууд хасагдана.
+      if (product.recipeItems.length === 0) missingRecipe.push(product.name);
+
+      for (const recipeItem of product.recipeItems) {
+        const material = recipeItem.rawMaterial;
+        const perUnitBase = convertQuantity(recipeItem.quantity, recipeItem.unit, material.unit);
+        const averageCost = d(material.averageCost);
+        unitCost = unitCost.plus(perUnitBase.times(averageCost));
+
+        const needed = perUnitBase.times(quantity);
+        const key = consumptionKey(rawMaterialSubject(material.id));
+        const existing = consumptionMap.get(key);
+        if (existing) {
+          existing.baseQuantity = existing.baseQuantity.plus(needed);
+        } else {
+          consumptionMap.set(key, {
+            subject: rawMaterialSubject(material.id),
+            key,
+            materialName: material.name,
+            baseQuantity: needed,
+            averageCost,
+            unit: unitLabel(material.unit),
+            available: d(material.quantity),
+          });
+        }
       }
     }
 
@@ -164,7 +213,7 @@ export function findShortages(consumption: Consumption[]): StockShortage[] {
   return consumption
     .filter((c) => c.baseQuantity.greaterThan(c.available))
     .map((c) => ({
-      rawMaterialId: c.rawMaterialId,
+      key: c.key,
       materialName: c.materialName,
       required: c.baseQuantity.toFixed(3),
       available: c.available.toFixed(3),
@@ -174,7 +223,8 @@ export function findShortages(consumption: Consumption[]): StockShortage[] {
 
 /**
  * Өдрийн борлуулалтыг баталгаажуулах — БҮГД нэг гүйлгээнд:
- *   1) баримт, 2) орлого, 3) жорын хэрэглээ, 4) нөөц хасах,
+ *   1) баримт, 2) орлого, 3) хэрэглээ (жор эсвэл бүтээгдэхүүний нөөц),
+ *   4) нөөц хасах,
  *   5) SALE_CONSUMPTION_OUT хөдөлгөөн, 6) тухайн үеийн өртөг,
  *   7) ББӨ, 8) нийт ашиг, 9) мөнгөн гүйлгээ, 10) аудит.
  */
@@ -244,11 +294,11 @@ export async function postSalesBatch(
       select: { id: true, batchNo: true },
     });
 
-    // Жорын дагуу материалыг автоматаар хасна.
+    // Жорын материал ба дамжуулан борлуулах бүтээгдэхүүнийг автоматаар хасна.
     for (const line of consumption) {
       if (line.baseQuantity.lessThanOrEqualTo(0)) continue;
       await applyMovement(tx, {
-        rawMaterialId: line.rawMaterialId,
+        subject: line.subject,
         movementType: "SALE_CONSUMPTION_OUT",
         quantity: line.baseQuantity,
         costPolicy: { mode: "AVERAGE" },
@@ -327,7 +377,7 @@ export async function cancelSaleBatch(params: {
 
     for (const movement of movements) {
       await applyMovement(tx, {
-        rawMaterialId: movement.rawMaterialId,
+        subject: subjectOf(movement),
         movementType: "CORRECTION_IN",
         quantity: d(movement.quantity).abs(),
         // Хэрэглэсэн үеийн өртгөөр буцаана — түүхэн өртөг өөрчлөгдөхгүй.

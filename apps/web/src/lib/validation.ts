@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { Account, PurchasePaymentMethod, Role, Unit } from "@prisma/client";
+import { Account, ProductType, PurchasePaymentMethod, Role, Unit } from "@prisma/client";
 import { MANUAL_MOVEMENT_TYPES } from "@/lib/movements";
 
 /** "1 200.5" / "1,200.5" гэх мэт оролтыг цэвэрлэнэ. */
@@ -61,8 +61,8 @@ export const passwordResetSchema = z.object({
 
 // --- Бараа материал -------------------------------------------------------
 
+// Код нь sequence-ээс автоматаар үүсдэг тул формоос ирэхгүй.
 export const rawMaterialSchema = z.object({
-  sku: requiredText("Код", 50),
   name: requiredText("Нэр"),
   categoryId: z.string().optional().transform((v) => (v ? v : undefined)),
   unit: z.nativeEnum(Unit),
@@ -77,11 +77,14 @@ export const categorySchema = z.object({ name: requiredText("Нэр", 100) });
 // --- Бүтээгдэхүүн ба жор --------------------------------------------------
 
 export const productSchema = z.object({
-  sku: requiredText("Код", 50),
   name: requiredText("Нэр"),
   categoryId: z.string().optional().transform((v) => (v ? v : undefined)),
+  productType: z.nativeEnum(ProductType),
   sellingPrice: nonNegativeAmount,
   isActive: z.coerce.boolean().default(true),
+  /** Зөвхөн RESALE-д хэрэглэгдэнэ; MANUFACTURED-д үл хамаарна. */
+  unit: z.nativeEnum(Unit).default("PCS"),
+  minimumStock: nonNegativeAmount.default("0"),
 });
 
 export const productUpdateSchema = productSchema.extend({ id: z.string().min(1) });
@@ -99,12 +102,32 @@ export const recipeSchema = z.object({
 
 // --- Худалдан авалт -------------------------------------------------------
 
-export const purchaseLineSchema = z.object({
-  rawMaterialId: z.string().min(1, "Материал сонгоно уу."),
-  quantity: positiveAmount,
-  unit: z.nativeEnum(Unit),
-  unitPrice: nonNegativeAmount,
-});
+/**
+ * Худалдан авалтын мөр. Формоос "rm:<id>" / "pr:<id>" хэлбэрийн нэг
+ * түлхүүрээр ирж, энд түүхий эд / бүтээгдэхүүн болж задарна.
+ */
+export const purchaseLineSchema = z
+  .object({
+    itemKey: z.string().min(1, "Бараа сонгоно уу."),
+    quantity: positiveAmount,
+    unit: z.nativeEnum(Unit),
+    unitPrice: nonNegativeAmount,
+  })
+  .transform((line, ctx) => {
+    const match = /^(rm|pr):(.+)$/.exec(line.itemKey);
+    if (!match) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["itemKey"], message: "Бараа сонгоно уу." });
+      return z.NEVER;
+    }
+    const [, kind, id] = match;
+    return {
+      rawMaterialId: kind === "rm" ? id : null,
+      productId: kind === "pr" ? id : null,
+      quantity: line.quantity,
+      unit: line.unit,
+      unitPrice: line.unitPrice,
+    };
+  });
 
 export const purchaseSchema = z.object({
   date: dateInput,

@@ -11,14 +11,19 @@ import { formatMoney, formatMoneyPrecise, formatQty } from "@/lib/format";
 import { prisma } from "@/lib/prisma";
 import { unitLabel } from "@/lib/units";
 import { inventoryValue } from "@/server/services/inventory";
-import { EditMaterialButton, NewCategoryButton, NewMaterialButton } from "./MaterialsClient";
+import { CategoryManagerButton } from "@/components/categories/CategoryManager";
+import { listCategories } from "@/server/services/categories";
+import { DeleteRecordButton } from "@/components/ui/DeleteRecordButton";
+import { getUsedRawMaterialIds } from "@/server/services/master-data";
+import { EditMaterialButton, NewMaterialButton } from "./MaterialsClient";
+import { deleteRawMaterialAction } from "./actions";
 
 export const metadata = { title: "Бараа материал | Начин ERP" };
 
 type SearchParams = Promise<{ q?: string; category?: string; status?: string }>;
 
 export default async function MaterialsPage({ searchParams }: { searchParams: SearchParams }) {
-  await requirePageUser();
+  const user = await requirePageUser();
   const params = await searchParams;
 
   const where: Prisma.RawMaterialWhereInput = {};
@@ -32,14 +37,21 @@ export default async function MaterialsPage({ searchParams }: { searchParams: Se
   if (params.status === "inactive") where.isActive = false;
   else if (params.status === "active") where.isActive = true;
 
-  const [materials, categories] = await Promise.all([
+  const [materials, categoryRows] = await Promise.all([
     prisma.rawMaterial.findMany({
       where,
       include: { category: true },
       orderBy: [{ isActive: "desc" }, { name: "asc" }],
     }),
-    prisma.rawMaterialCategory.findMany({ orderBy: { name: "asc" } }),
+    listCategories("rawMaterial"),
   ]);
+
+  // Шинэ материалд зөвхөн идэвхтэй ангиллыг санал болгоно; шүүлтэнд бүгд харагдана.
+  const categories = categoryRows.filter((c) => c.isActive);
+
+  // Түүхэнд ашиглагдсан материалыг устгах боломжгүй — товч идэвхгүй болно.
+  // Жинхэнэ шалгалт нь server action ба үйлчилгээний давхаргад.
+  const usedIds = await getUsedRawMaterialIds(materials.map((m) => m.id));
 
   const rows = materials.map((material) => ({
     material,
@@ -61,7 +73,11 @@ export default async function MaterialsPage({ searchParams }: { searchParams: Se
         description={`Нийт ${materials.length} нэр төрөл · Нөөцийн өртөг ${formatMoney(totalValue)}`}
         action={
           <>
-            <NewCategoryButton />
+            <CategoryManagerButton
+              kind="rawMaterial"
+              categories={categoryRows}
+              canDelete={user.role === "OWNER"}
+            />
             <NewMaterialButton categories={categories} />
           </>
         }
@@ -78,7 +94,10 @@ export default async function MaterialsPage({ searchParams }: { searchParams: Se
         <FilterSelect
           paramKey="category"
           label="Ангилал"
-          options={categories.map((c) => ({ value: c.id, label: c.name }))}
+          options={categoryRows.map((c) => ({
+            value: c.id,
+            label: c.isActive ? c.name : `${c.name} (идэвхгүй)`,
+          }))}
         />
         <FilterSelect
           paramKey="status"
@@ -146,6 +165,16 @@ export default async function MaterialsPage({ searchParams }: { searchParams: Se
                         hasStock: !d(material.quantity).isZero(),
                       }}
                     />
+                    {user.role === "OWNER" ? (
+                      <DeleteRecordButton
+                        id={material.id}
+                        action={deleteRawMaterialAction}
+                        title="Бараа материал устгах"
+                        description={`"${material.name}"-г бүр мөсөн устгах уу? Энэ үйлдлийг буцаах боломжгүй.`}
+                        blocked={usedIds.has(material.id)}
+                        blockedReason="Түүхэнд ашиглагдсан тул устгах боломжгүй. Идэвхгүй болгоно уу."
+                      />
+                    ) : null}
                   </Td>
                 </Tr>
               ))

@@ -31,6 +31,14 @@ enum Unit {
   PACK
 }
 
+/// Бүтээгдэхүүний төрөл.
+///  MANUFACTURED — жороор үйлдвэрлэдэг (орц нь материалаас хасагдана)
+///  RESALE       — худалдан авч дамжуулан борлуулдаг (өөрийн нөөцтэй)
+enum ProductType {
+  MANUFACTURED
+  RESALE
+}
+
 /// Санхүү / нөөцийн баримтын төлөв. Устгахын оронд CANCELLED болгоно.
 enum DocStatus {
   DRAFT
@@ -101,12 +109,13 @@ model User {
 
   sessions        Session[]
   auditLogs       AuditLog[]
-  purchases       Purchase[]          @relation("PurchaseCreatedBy")
-  saleBatches     SaleBatch[]         @relation("SaleBatchCreatedBy")
-  movements       InventoryMovement[] @relation("MovementCreatedBy")
-  expenses        Expense[]           @relation("ExpenseCreatedBy")
-  moneyTxns       MoneyTransaction[]  @relation("MoneyTxnCreatedBy")
-  inventoryCounts InventoryCount[]    @relation("CountCreatedBy")
+  purchases       Purchase[]           @relation("PurchaseCreatedBy")
+  saleBatches     SaleBatch[]          @relation("SaleBatchCreatedBy")
+  movements       InventoryMovement[]  @relation("MovementCreatedBy")
+  expenses        Expense[]            @relation("ExpenseCreatedBy")
+  moneyTxns       MoneyTransaction[]   @relation("MoneyTxnCreatedBy")
+  inventoryCounts InventoryCount[]     @relation("CountCreatedBy")
+  attachments     PurchaseAttachment[] @relation("AttachmentUploadedBy")
 
   @@index([isActive])
 }
@@ -131,10 +140,13 @@ model Session {
 model RawMaterialCategory {
   id        String   @id @default(cuid())
   name      String   @unique
+  isActive  Boolean  @default(true)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   rawMaterials RawMaterial[]
+
+  @@index([isActive])
 }
 
 model RawMaterial {
@@ -172,29 +184,45 @@ model RawMaterial {
 model ProductCategory {
   id        String   @id @default(cuid())
   name      String   @unique
+  isActive  Boolean  @default(true)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   products Product[]
+
+  @@index([isActive])
 }
 
 model Product {
-  id           String  @id @default(cuid())
-  sku          String  @unique
+  id           String      @id @default(cuid())
+  sku          String      @unique
   name         String
   categoryId   String?
-  sellingPrice Decimal @db.Decimal(18, 2)
-  isActive     Boolean @default(true)
+  productType  ProductType @default(MANUFACTURED)
+  sellingPrice Decimal     @db.Decimal(18, 2)
+  isActive     Boolean     @default(true)
+
+  /// Дараах талбарууд ЗӨВХӨН RESALE бүтээгдэхүүнд утгатай.
+  /// MANUFACTURED-ийн өртөг нь жорноос бодогддог тул эдгээр нь 0 хэвээр үлдэнэ.
+  unit              Unit     @default(PCS)
+  quantity          Decimal  @default(0) @db.Decimal(18, 3)
+  minimumStock      Decimal  @default(0) @db.Decimal(18, 3)
+  /// Жигнэсэн дундаж авалтын өртөг (нэгжид).
+  averageCost       Decimal  @default(0) @db.Decimal(18, 4)
+  lastPurchasePrice Decimal? @db.Decimal(18, 4)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  category    ProductCategory? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
-  recipeItems RecipeItem[]
-  saleItems   SaleItem[]
+  category      ProductCategory?    @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  recipeItems   RecipeItem[]
+  saleItems     SaleItem[]
+  movements     InventoryMovement[]
+  purchaseItems PurchaseItem[]
 
   @@index([isActive])
   @@index([categoryId])
+  @@index([productType, isActive])
 }
 
 model RecipeItem {
@@ -247,18 +275,44 @@ model Purchase {
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
 
-  supplier  Supplier?      @relation(fields: [supplierId], references: [id], onDelete: SetNull)
-  createdBy User           @relation("PurchaseCreatedBy", fields: [createdById], references: [id], onDelete: Restrict)
-  items     PurchaseItem[]
+  supplier    Supplier?            @relation(fields: [supplierId], references: [id], onDelete: SetNull)
+  createdBy   User                 @relation("PurchaseCreatedBy", fields: [createdById], references: [id], onDelete: Restrict)
+  items       PurchaseItem[]
+  attachments PurchaseAttachment[]
 
   @@index([date])
   @@index([status, date])
+  @@index([supplierId, status, date])
 }
 
+/// Худалдан авалтын баримт / нэхэмжлэхийн хавсралт.
+/// Файл өөрөө хадгалалтын давхаргад (storage) байрлана — энд зөвхөн
+/// мета мэдээлэл ба таамаглах боломжгүй storageKey хадгалагдана.
+model PurchaseAttachment {
+  id               String   @id @default(cuid())
+  purchaseId       String
+  originalFileName String
+  mimeType         String
+  fileSize         Int
+  /// Хадгалалтын давхаарга дахь түлхүүр. Хэрэглэгчийн өгсөн нэрийг
+  /// зам болгон ХЭЗЭЭ Ч ашиглахгүй.
+  storageKey       String   @unique
+  uploadedById     String
+  uploadedAt       DateTime @default(now())
+
+  purchase   Purchase @relation(fields: [purchaseId], references: [id], onDelete: Cascade)
+  uploadedBy User     @relation("AttachmentUploadedBy", fields: [uploadedById], references: [id], onDelete: Restrict)
+
+  @@index([purchaseId])
+}
+
+/// Худалдан авалтын мөр. Түүхий эд эсвэл RESALE бүтээгдэхүүн —
+/// rawMaterialId / productId-ийн ЯГ НЭГ нь утгатай (DB CHECK).
 model PurchaseItem {
   id            String  @id @default(cuid())
   purchaseId    String
-  rawMaterialId String
+  rawMaterialId String?
+  productId     String?
   /// Бичсэн нэгжээрх тоо хэмжээ ба нэгж үнэ.
   quantity      Decimal @db.Decimal(18, 3)
   unit          Unit
@@ -268,11 +322,13 @@ model PurchaseItem {
   baseQuantity  Decimal @db.Decimal(18, 3)
   baseUnitCost  Decimal @db.Decimal(18, 4)
 
-  purchase    Purchase    @relation(fields: [purchaseId], references: [id], onDelete: Cascade)
-  rawMaterial RawMaterial @relation(fields: [rawMaterialId], references: [id], onDelete: Restrict)
+  purchase    Purchase     @relation(fields: [purchaseId], references: [id], onDelete: Cascade)
+  rawMaterial RawMaterial? @relation(fields: [rawMaterialId], references: [id], onDelete: Restrict)
+  product     Product?     @relation(fields: [productId], references: [id], onDelete: Restrict)
 
   @@index([purchaseId])
   @@index([rawMaterialId])
+  @@index([productId])
 }
 
 // ---------------------------------------------------------------------------
@@ -333,9 +389,13 @@ model SaleItem {
 // Нөөцийн хөдөлгөөний дэвтэр
 // ---------------------------------------------------------------------------
 
+/// Нөөцийн ганц дэвтэр. Түүхий эд БОЛОН дамжуулан борлуулах
+/// бүтээгдэхүүн хоёулаа энд бүртгэгдэнэ — rawMaterialId эсвэл
+/// productId-ийн ЯГ НЭГ нь заавал утгатай (DB CHECK-ээр баталгаажсан).
 model InventoryMovement {
   id            String       @id @default(cuid())
-  rawMaterialId String
+  rawMaterialId String?
+  productId     String?
   movementType  MovementType
   /// Тэмдэгтэй хэмжээ: орлого эерэг, зарлага сөрөг (материалын үндсэн нэгжээр).
   quantity      Decimal      @db.Decimal(18, 3)
@@ -352,10 +412,12 @@ model InventoryMovement {
   createdById String
   createdAt   DateTime @default(now())
 
-  rawMaterial RawMaterial @relation(fields: [rawMaterialId], references: [id], onDelete: Restrict)
-  createdBy   User        @relation("MovementCreatedBy", fields: [createdById], references: [id], onDelete: Restrict)
+  rawMaterial RawMaterial? @relation(fields: [rawMaterialId], references: [id], onDelete: Restrict)
+  product     Product?     @relation(fields: [productId], references: [id], onDelete: Restrict)
+  createdBy   User         @relation("MovementCreatedBy", fields: [createdById], references: [id], onDelete: Restrict)
 
   @@index([rawMaterialId, createdAt])
+  @@index([productId, createdAt])
   @@index([referenceType, referenceId])
   @@index([createdAt])
 }
