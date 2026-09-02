@@ -1,4 +1,5 @@
 import "server-only";
+import type { DocStatus } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { writeAudit } from "@/lib/audit";
 import {
@@ -14,6 +15,12 @@ import {
  * Файл өөрөө хадгалалтын давхаргад, мета мэдээлэл нь өгөгдлийн санд.
  * Хандалт нь ЗӨВХӨН баталгаажсан хэрэглэгчид, /api/attachments/[id]
  * маршрутаар — файлын шууд, таамаглаж болох URL байхгүй.
+ *
+ * ӨӨРЧЛӨХ ХОРИГ: баталгаажсан (POSTED) буюу цуцлагдсан баримтын хавсралтыг
+ * нэмэх, устгах боломжгүй. Баримтын зураг нь баримтын нэг хэсэг тул
+ * баталгаажсаны дараа бусад мэдээлэлтэй адил өөрчлөгдөхгүй. Зураг нь
+ * ЗӨВХӨН баталгаажуулах үйлдлийн дотор, баримттайгаа хамт үүсдэг
+ * (postPurchase-ийн receipt параметр).
  */
 
 export const MAX_ATTACHMENTS_PER_PURCHASE = 10;
@@ -60,6 +67,14 @@ export async function listPurchaseAttachments(purchaseId: string): Promise<Attac
   }));
 }
 
+/** Баримт эцэслэгдсэн үү (баталгаажсан эсвэл цуцлагдсан)? */
+function isFinalized(status: DocStatus): boolean {
+  return status !== "DRAFT";
+}
+
+const IMMUTABLE_MESSAGE =
+  "Баталгаажсан худалдан авалтын баримтын зургийг өөрчлөх боломжгүй.";
+
 export async function addPurchaseAttachment(params: {
   purchaseId: string;
   file: File;
@@ -68,9 +83,16 @@ export async function addPurchaseAttachment(params: {
 }): Promise<void> {
   const purchase = await prisma.purchase.findUnique({
     where: { id: params.purchaseId },
-    select: { id: true, purchaseNo: true, _count: { select: { attachments: true } } },
+    select: {
+      id: true,
+      purchaseNo: true,
+      status: true,
+      _count: { select: { attachments: true } },
+    },
   });
   if (!purchase) throw new Error("Худалдан авалт олдсонгүй.");
+  // Серверийн түвшний хориг — UI-д товч нуух нь хамгаалалт биш.
+  if (isFinalized(purchase.status)) throw new Error(IMMUTABLE_MESSAGE);
   if (purchase._count.attachments >= MAX_ATTACHMENTS_PER_PURCHASE) {
     throw new Error(`Нэг баримтад дээд тал нь ${MAX_ATTACHMENTS_PER_PURCHASE} хавсралт байна.`);
   }
@@ -135,9 +157,10 @@ export async function deletePurchaseAttachment(params: {
 }): Promise<{ purchaseId: string }> {
   const attachment = await prisma.purchaseAttachment.findUnique({
     where: { id: params.attachmentId },
-    include: { purchase: { select: { purchaseNo: true } } },
+    include: { purchase: { select: { purchaseNo: true, status: true } } },
   });
   if (!attachment) throw new Error("Хавсралт олдсонгүй.");
+  if (isFinalized(attachment.purchase.status)) throw new Error(IMMUTABLE_MESSAGE);
 
   await prisma.purchaseAttachment.delete({ where: { id: attachment.id } });
   await fileStorage.delete(attachment.storageKey).catch(() => {});
@@ -165,6 +188,8 @@ export async function readAttachmentForDownload(attachmentId: string): Promise<{
   mimeType: string;
   fileName: string;
   fileSize: number;
+  /** Зураг л шууд харуулах боломжтой. SVG цагаан жагсаалтад БАЙХГҮЙ. */
+  isImage: boolean;
 } | null> {
   const attachment = await prisma.purchaseAttachment.findUnique({
     where: { id: attachmentId },
@@ -181,5 +206,6 @@ export async function readAttachmentForDownload(attachmentId: string): Promise<{
     mimeType: attachment.mimeType,
     fileName: attachment.originalFileName,
     fileSize: attachment.fileSize,
+    isImage: attachment.mimeType.startsWith("image/"),
   };
 }

@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useMemo, useState } from "react";
+import { useActionState, useEffect, useMemo, useState } from "react";
 import type { Unit } from "@prisma/client";
 import { Plus, Trash2 } from "lucide-react";
 import { Alert } from "@/components/ui/Alert";
@@ -21,6 +21,8 @@ import {
   type AssociatedSuggestion,
   type SupplierSuggestionBundle,
 } from "./suggestions-action";
+import { PURCHASE_PAYMENT_LABEL } from "@/lib/purchases";
+import { ConfirmPurchaseModal, type ConfirmLine } from "./ConfirmPurchaseModal";
 import { createPurchaseAction } from "../actions";
 
 /**
@@ -41,6 +43,9 @@ export type ItemOption = {
 type Row = { itemKey: string; quantity: string; unit: Unit; unitPrice: string };
 
 const EMPTY_ROW: Row = { itemKey: "", quantity: "", unit: "KG", unitPrice: "" };
+
+/** Модал формын гадна байрлах тул товч, файлын талбар `form` атрибутаар холбогдоно. */
+const FORM_ID = "purchase-form";
 
 function toNumber(value: string): number {
   const parsed = Number(value.replace(/\s|,/g, ""));
@@ -67,7 +72,23 @@ export function PurchaseForm({
     history: [],
   });
   const [loadingSuggestions, setLoadingSuggestions] = useState(false);
-  const [state, formAction] = useActionState<ActionState, FormData>(createPurchaseAction, IDLE);
+  const [state, formAction, isPending] = useActionState<ActionState, FormData>(
+    createPurchaseAction,
+    IDLE,
+  );
+  const [confirmOpen, setConfirmOpen] = useState(false);
+  const [paymentMethod, setPaymentMethod] = useState("CASH");
+  const [purchaseDate, setPurchaseDate] = useState(today);
+  /**
+   * Формын энэ хуулбарын давхардлаас хамгаалах түлхүүр. Хоёр дахин дарах,
+   * сүлжээ давтан илгээхэд сервер тал ижил түлхүүрийг таньж, ШИНЭ баримт
+   * үүсгэхгүй.
+   */
+  const [idempotencyKey] = useState(() =>
+    typeof crypto !== "undefined" && "randomUUID" in crypto
+      ? crypto.randomUUID()
+      : `${Date.now()}-${Math.random().toString(36).slice(2)}`,
+  );
   const byKey = useMemo(() => new Map(items.map((m) => [m.key, m])), [items]);
 
   const materials = useMemo(() => items.filter((i) => i.kind === "rawMaterial"), [items]);
@@ -154,9 +175,38 @@ export function PurchaseForm({
   const filledRows = rows.filter((row) => row.itemKey && toNumber(row.quantity) > 0).length;
   const totalQuantity = rows.reduce((acc, row) => acc + toNumber(row.quantity), 0);
 
+  // Алдаа гарвал модалыг хааж, формын дээрх мессежийг харуулна. Оруулсан
+  // өгөгдөл бүрэн хэвээр — хэрэглэгч засаад дахин баталгаажуулж болно.
+  useEffect(() => {
+    if (state.status === "error") setConfirmOpen(false);
+  }, [state]);
+
+  /** Баталгаажуулах модалд харуулах мөрүүд. */
+  const confirmLines: ConfirmLine[] = rows
+    .filter((row) => row.itemKey && toNumber(row.quantity) > 0)
+    .map((row) => {
+      const option = byKey.get(row.itemKey);
+      const quantity = toNumber(row.quantity);
+      const unitPrice = toNumber(row.unitPrice);
+      return {
+        key: row.itemKey,
+        name: option ? `${option.name} (${option.sku})` : row.itemKey,
+        quantity,
+        unit: row.unit,
+        unitPrice,
+        subtotal: quantity * unitPrice,
+      };
+    });
+
+  const supplierName =
+    supplierList.find((supplier) => supplier.id === supplierId)?.name ?? "Нийлүүлэгчгүй";
+
   return (
     <>
-    <form action={formAction} className="space-y-6">
+    <form id={FORM_ID} action={formAction} className="space-y-6">
+      {/* Давхардлаас хамгаалах түлхүүр — сервер тал ижил түлхүүрээр хоёр
+          дахь баримт үүсгэхгүй. */}
+      <input type="hidden" name="idempotencyKey" value={idempotencyKey} />
       {state.status === "error" && state.message ? <Alert tone="error">{state.message}</Alert> : null}
 
       <Card>
@@ -164,7 +214,14 @@ export function PurchaseForm({
         <CardBody>
           <FieldGrid columns={4}>
             <Field label="Огноо" htmlFor="date" required error={state.fieldErrors?.date}>
-              <Input id="date" name="date" type="date" defaultValue={today} required />
+              <Input
+                id="date"
+                name="date"
+                type="date"
+                value={purchaseDate}
+                onChange={(event) => setPurchaseDate(event.target.value)}
+                required
+              />
             </Field>
             <Field
               label="Нийлүүлэгч"
@@ -199,7 +256,12 @@ export function PurchaseForm({
               </div>
             </Field>
             <Field label="Төлбөрийн хэлбэр" htmlFor="paymentMethod" required>
-              <Select id="paymentMethod" name="paymentMethod" defaultValue="CASH">
+              <Select
+                id="paymentMethod"
+                name="paymentMethod"
+                value={paymentMethod}
+                onChange={(event) => setPaymentMethod(event.target.value)}
+              >
                 <option value="CASH">Бэлэн (кассаас)</option>
                 <option value="BANK">Банк</option>
                 <option value="CREDIT">Зээлээр (төлбөр хийгдээгүй)</option>
@@ -396,14 +458,35 @@ export function PurchaseForm({
         ]}
         totalLabel="Нийт төлөх дүн"
         total={formatMoney(total)}
-        note="Батлагдмагц нөөц нэмэгдэж, жигнэсэн дундаж өртөг шинэчлэгдэнэ."
+        note="Баталгаажуулсны дараа нөөц нэмэгдэж, жигнэсэн дундаж өртөг шинэчлэгдэнэ."
+        // Энэ товч формыг илгээхгүй — эцсийн баталгаажуулах модалыг нээнэ.
+        // Бодит илгээлт нь модал доторх "Баталгаажуулах" дээр хийгдэнэ.
         action={
-          <SubmitButton size="lg" pendingText="Бүртгэж байна..." disabled={filledRows === 0}>
+          <Button
+            size="lg"
+            onClick={() => setConfirmOpen(true)}
+            disabled={filledRows === 0 || isPending}
+          >
             Худалдан авалт бүртгэх
-          </SubmitButton>
+          </Button>
         }
       />
     </form>
+
+    {/* Эцсийн баталгаажуулах модал. Формын ГАДНА — форм дотор форм байж
+        болохгүй. "Цуцлах" нь зөвхөн модалыг хаана: оруулсан өгөгдөл бүрэн
+        хэвээр, өгөгдлийн санд юу ч үүсээгүй. */}
+    <ConfirmPurchaseModal
+      open={confirmOpen}
+      onClose={() => setConfirmOpen(false)}
+      formId={FORM_ID}
+      lines={confirmLines}
+      total={total}
+      supplierName={supplierName}
+      paymentLabel={PURCHASE_PAYMENT_LABEL[paymentMethod as keyof typeof PURCHASE_PAYMENT_LABEL]}
+      dateLabel={purchaseDate}
+      pending={isPending}
+    />
 
     {/* Модал нь худалдан авалтын формын ГАДНА байрлана: HTML-д форм дотор
         форм байж болохгүй бөгөөд тэгвэл дотоод форм илгээгдэхгүй. Ингэснээр
