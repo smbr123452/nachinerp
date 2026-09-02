@@ -23,7 +23,7 @@ import {
   rangeFromInputs,
 } from "@/server/services/reports";
 
-export const metadata = { title: "Тайлан | Начин ERP" };
+export const metadata = { title: "Тайлан" };
 export const dynamic = "force-dynamic";
 
 const REPORTS = [

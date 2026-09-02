@@ -7,7 +7,7 @@ import { prisma } from "@/lib/prisma";
 import { convertQuantity, unitLabel } from "@/lib/units";
 import { SaleForm, type MaterialStock, type ProductOption } from "./SaleForm";
 
-export const metadata = { title: "Өдрийн борлуулалт | Начин ERP" };
+export const metadata = { title: "Өдрийн борлуулалт" };
 
 export default async function NewSalePage() {
   const user = await requirePageUser();

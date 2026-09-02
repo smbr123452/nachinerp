@@ -9,7 +9,7 @@ import { formatDateTime } from "@/lib/format";
 import { prisma } from "@/lib/prisma";
 import { parseDateInput } from "@/lib/dates";
 
-export const metadata = { title: "Audit Log | Начин ERP" };
+export const metadata = { title: "Audit Log" };
 export const dynamic = "force-dynamic";
 
 type SearchParams = Promise<{ q?: string; action?: string; user?: string; from?: string; to?: string }>;

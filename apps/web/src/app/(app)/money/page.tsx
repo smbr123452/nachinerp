@@ -6,7 +6,7 @@ import type { LedgerFilters } from "@/server/services/money-analytics";
 import { OwnerMoneyView } from "./OwnerMoneyView";
 import { ManagerMoneyView } from "./ManagerMoneyView";
 
-export const metadata = { title: "Мөнгө | Начин ERP" };
+export const metadata = { title: "Мөнгө" };
 export const dynamic = "force-dynamic";
 
 type SearchParams = Promise<{

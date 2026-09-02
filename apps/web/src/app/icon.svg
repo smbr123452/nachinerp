@@ -1,5 +1,20 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64">
-  <rect width="64" height="64" rx="14" fill="#2456eb"/>
-  <text x="32" y="45" font-family="system-ui, -apple-system, Segoe UI, Roboto, sans-serif"
-        font-size="38" font-weight="700" fill="#ffffff" text-anchor="middle">Н</text>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64" role="img" aria-label="SIRIUS AURUM ERP">
+  <title>SIRIUS AURUM ERP</title>
+  <defs>
+    <linearGradient id="sa-favicon-ramp" gradientUnits="userSpaceOnUse" x1="800" y1="0" x2="330" y2="640">
+      <stop offset="0" stop-color="#12A6F6"/>
+      <stop offset="0.34" stop-color="#1D7AF0"/>
+      <stop offset="0.7" stop-color="#2058E9"/>
+      <stop offset="1" stop-color="#1B45DA"/>
+    </linearGradient>
+  </defs>
+  <g transform="translate(1 12) scale(0.06263)">
+    <g fill="url(#sa-favicon-ramp)">
+      <path d="M655,0 L990,640 L785,640 L655,285 L550,640 L490,640 Z"/>
+      <path fill="none" stroke="url(#sa-favicon-ramp)" stroke-width="145" stroke-linecap="butt" stroke-linejoin="round" d="M560,72 L255,72 C138,72 34,142 34,236 C34,332 122,380 244,404 C338,423 420,444 420,502 C420,556 358,568 280,568 L45,568"/>
+      <path d="M548,0 L600,0 L548,145 Z"/>
+      <path d="M57,495 L57,640 L0,640 Z"/>
+    </g>
+    <path fill="#16244C" d="M652,376 C662,462 676,492 730,515 C676,538 662,568 652,640 C642,568 628,538 574,515 C628,492 642,462 652,376 Z"/>
+  </g>
 </svg>

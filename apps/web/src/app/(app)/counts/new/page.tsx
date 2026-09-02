@@ -6,7 +6,7 @@ import { prisma } from "@/lib/prisma";
 import { unitLabel } from "@/lib/units";
 import { CountCreateForm, type CountMaterial } from "./CountCreateForm";
 
-export const metadata = { title: "Шинэ тооллого | Начин ERP" };
+export const metadata = { title: "Шинэ тооллого" };
 
 export default async function NewCountPage() {
   await requirePageUser();

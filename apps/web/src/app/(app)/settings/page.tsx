@@ -10,7 +10,7 @@ import { allowNegativeStock, getSetting, SETTING_KEYS } from "@/server/services/
 import { EditUserButton, NewUserButton } from "./SettingsClient";
 import { SettingsForm } from "./SettingsForm";
 
-export const metadata = { title: "Тохиргоо | Начин ERP" };
+export const metadata = { title: "Тохиргоо" };
 
 export default async function SettingsPage() {
   await requirePageOwner();
