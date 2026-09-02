@@ -23,4 +23,6 @@ export const MOVEMENT_TYPE_LABEL: Record<MovementType, string> = {
   INTERNAL_USE_OUT: "Дотоод хэрэглээ",
   CORRECTION_IN: "Залруулга — орлого",
   CORRECTION_OUT: "Залруулга — зарлага",
+  WRITE_OFF_OUT: "Акт — хасалт",
+  WRITE_OFF_REVERSAL_IN: "Акт буцаалт — сэргээлт",
 };

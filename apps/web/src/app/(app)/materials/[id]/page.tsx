@@ -2,6 +2,7 @@ import type { Unit } from "@prisma/client";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { PageHeader } from "@/components/layout/PageHeader";
+import { WriteOffButton } from "../write-offs/WriteOffButton";
 import { Badge, StatusBadge } from "@/components/ui/Badge";
 import { Card, CardHeader } from "@/components/ui/Card";
 import { StatCard } from "@/components/ui/StatCard";
@@ -84,7 +85,10 @@ export default async function MaterialDetailPage({
         title={material.name}
         description={`${material.sku} · ${material.category?.name ?? "Ангилалгүй"} · Нэгж: ${unit}`}
         action={
+          <div className="flex flex-wrap gap-2">
+            <WriteOffButton subject={`rawMaterial:${material.id}`} />
             <AdjustmentButton rawMaterialId={material.id} materialName={material.name} unit={unit} />
+          </div>
         }
       />
 

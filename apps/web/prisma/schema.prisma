@@ -59,6 +59,20 @@ enum MovementType {
   INTERNAL_USE_OUT
   CORRECTION_IN
   CORRECTION_OUT
+  WRITE_OFF_OUT
+  WRITE_OFF_REVERSAL_IN
+}
+
+/// Актаар хасах шалтгаан. Дотооддоо бүтэцтэй утга, дэлгэцэнд монгол нэр.
+enum WriteOffReason {
+  EXPIRED
+  SPOILED
+  DAMAGED
+  SPILLED_BROKEN
+  LOSS
+  INTERNAL_USE
+  QUALITY_REJECTED
+  OTHER
 }
 
 enum Account {
@@ -107,16 +121,19 @@ model User {
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
-  sessions        Session[]
-  auditLogs       AuditLog[]
-  purchases       Purchase[]           @relation("PurchaseCreatedBy")
-  saleBatches     SaleBatch[]          @relation("SaleBatchCreatedBy")
-  movements       InventoryMovement[]  @relation("MovementCreatedBy")
-  expenses        Expense[]            @relation("ExpenseCreatedBy")
-  moneyTxns       MoneyTransaction[]   @relation("MoneyTxnCreatedBy")
-  inventoryCounts InventoryCount[]     @relation("CountCreatedBy")
-  attachments     PurchaseAttachment[] @relation("AttachmentUploadedBy")
-  supplierItems   SupplierItem[]       @relation("SupplierItemCreatedBy")
+  sessions          Session[]
+  auditLogs         AuditLog[]
+  purchases         Purchase[]           @relation("PurchaseCreatedBy")
+  saleBatches       SaleBatch[]          @relation("SaleBatchCreatedBy")
+  movements         InventoryMovement[]  @relation("MovementCreatedBy")
+  expenses          Expense[]            @relation("ExpenseCreatedBy")
+  moneyTxns         MoneyTransaction[]   @relation("MoneyTxnCreatedBy")
+  inventoryCounts   InventoryCount[]     @relation("CountCreatedBy")
+  attachments       PurchaseAttachment[] @relation("AttachmentUploadedBy")
+  supplierItems     SupplierItem[]       @relation("SupplierItemCreatedBy")
+  writeOffsCreated  InventoryWriteOff[]  @relation("WriteOffCreatedBy")
+  writeOffsPosted   InventoryWriteOff[]  @relation("WriteOffPostedBy")
+  writeOffsReversed InventoryWriteOff[]  @relation("WriteOffReversedBy")
 
   @@index([isActive])
 }
@@ -168,12 +185,13 @@ model RawMaterial {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  category      RawMaterialCategory? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  category      RawMaterialCategory?    @relation(fields: [categoryId], references: [id], onDelete: SetNull)
   movements     InventoryMovement[]
   purchaseItems PurchaseItem[]
   recipeItems   RecipeItem[]
   countItems    InventoryCountItem[]
   supplierItems SupplierItem[]
+  writeOffItems InventoryWriteOffItem[]
 
   @@index([isActive])
   @@index([categoryId])
@@ -216,12 +234,13 @@ model Product {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  category      ProductCategory?    @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  category      ProductCategory?        @relation(fields: [categoryId], references: [id], onDelete: SetNull)
   recipeItems   RecipeItem[]
   saleItems     SaleItem[]
   movements     InventoryMovement[]
   purchaseItems PurchaseItem[]
   supplierItems SupplierItem[]
+  writeOffItems InventoryWriteOffItem[]
 
   @@index([isActive])
   @@index([categoryId])
@@ -509,6 +528,93 @@ model InventoryCountItem {
 
   @@unique([countId, rawMaterialId])
   @@index([rawMaterialId])
+}
+
+// ---------------------------------------------------------------------------
+// Актаар хасалт (бараа материал / бэлэн бүтээгдэхүүн)
+// ---------------------------------------------------------------------------
+
+/// Нөөцөөс хасах АКТ — хугацаа дуусах, муудах, гэмтэх зэрэг МЭДЭГДЭЖ БУЙ
+/// шалтгаанаар барааг албан ёсоор данснаас гаргах баримт.
+///
+/// Тооллогын зөрүүтэй ХОЛИХГҮЙ: тооллого нь бодит тоо системийн тоотой
+/// таарахгүй байгааг илрүүлдэг, акт нь шалтгаан нь тодорхой хорогдлыг
+/// баримтжуулдаг.
+///
+/// Ноорог үед нөөцөд ЮУ Ч нөлөөлөхгүй. Зөвхөн батлах үед хөдөлгөөн үүснэ.
+/// Батлагдсан актыг устгах, засах боломжгүй — буцаалт нь эсрэг хөдөлгөөн
+/// үүсгэж, эх түүхийг хэвээр үлдээнэ.
+model InventoryWriteOff {
+  id         String         @id @default(cuid())
+  documentNo String         @unique
+  date       DateTime
+  reason     WriteOffReason
+  note       String?
+  status     DocStatus      @default(DRAFT)
+
+  /// Батлагдсан үеийн нийт хэмжээ ба өртөг. Мөрүүдийн нийлбэртэй үргэлж тэнцүү.
+  totalQuantity Decimal @default(0) @db.Decimal(18, 3)
+  totalCost     Decimal @default(0) @db.Decimal(18, 2)
+
+  /// Давхар батлахаас хамгаалах түлхүүр — худалдан авалттай ижил зарчим.
+  /// Хуучин / ноорог бичлэгт утга байхгүй тул nullable (Postgres-д NULL нь
+  /// ялгаатай гэж тооцогддог учир unique индекст саад болохгүй).
+  idempotencyKey String? @unique
+
+  createdById String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  postedAt   DateTime?
+  postedById String?
+
+  reversedAt   DateTime?
+  reversedById String?
+  reversalNote String?
+
+  createdBy  User                    @relation("WriteOffCreatedBy", fields: [createdById], references: [id], onDelete: Restrict)
+  postedBy   User?                   @relation("WriteOffPostedBy", fields: [postedById], references: [id], onDelete: Restrict)
+  reversedBy User?                   @relation("WriteOffReversedBy", fields: [reversedById], references: [id], onDelete: Restrict)
+  items      InventoryWriteOffItem[]
+
+  @@index([date])
+  @@index([status, date])
+  @@index([reason, status])
+}
+
+/// Актын мөр. Түүхий эд ЭСВЭЛ бэлэн (RESALE) бүтээгдэхүүн —
+/// rawMaterialId / productId-ийн ЯГ НЭГ нь утгатай (DB CHECK).
+///
+/// frozenUnitCost нь БАТЛАХ үеийн жигнэсэн дундаж өртөг. Дараа нь худалдан
+/// авалт хийгдэж дундаж өртөг өөрчлөгдсөн ч энэ утга ХЭЗЭЭ Ч өөрчлөгдөхгүй —
+/// түүхэн хорогдлын үнэлгээ тогтвортой байна.
+model InventoryWriteOffItem {
+  id            String  @id @default(cuid())
+  writeOffId    String
+  rawMaterialId String?
+  productId     String?
+
+  /// Субьектийн үндсэн нэгжээрх эерэг хэмжээ.
+  quantity Decimal @db.Decimal(18, 3)
+  unit     Unit
+
+  /// Батлах үеийн жигнэсэн дундаж өртөг ба түүгээр бодсон дүн.
+  frozenUnitCost Decimal @default(0) @db.Decimal(18, 4)
+  totalCost      Decimal @default(0) @db.Decimal(18, 2)
+
+  note String?
+
+  /// Мөр ↔ дэвтрийн хөдөлгөөний шууд холбоос (мөр бүрийг мөшгих боломжтой).
+  movementId         String? @unique
+  reversalMovementId String? @unique
+
+  writeOff    InventoryWriteOff @relation(fields: [writeOffId], references: [id], onDelete: Cascade)
+  rawMaterial RawMaterial?      @relation(fields: [rawMaterialId], references: [id], onDelete: Restrict)
+  product     Product?          @relation(fields: [productId], references: [id], onDelete: Restrict)
+
+  @@index([writeOffId])
+  @@index([rawMaterialId])
+  @@index([productId])
 }
 
 // ---------------------------------------------------------------------------

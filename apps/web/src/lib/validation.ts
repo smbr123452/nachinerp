@@ -271,3 +271,37 @@ export function parseRows(formData: FormData, prefix: string, fields: string[]) 
   }
   return rows;
 }
+
+// ---------------------------------------------------------------------------
+// Актаар хасалт
+// ---------------------------------------------------------------------------
+
+export const WRITE_OFF_REASON_VALUES = [
+  "EXPIRED",
+  "SPOILED",
+  "DAMAGED",
+  "SPILLED_BROKEN",
+  "LOSS",
+  "INTERNAL_USE",
+  "QUALITY_REJECTED",
+  "OTHER",
+] as const;
+
+/** Актын мөр: "rawMaterial:<id>" эсвэл "product:<id>" хэлбэрийн субьект. */
+export const writeOffLineSchema = z.object({
+  subject: z
+    .string()
+    .regex(/^(rawMaterial|product):[A-Za-z0-9_-]+$/, "Бараа сонгоно уу."),
+  quantity: positiveAmount,
+});
+
+export const writeOffSchema = z
+  .object({
+    date: dateInput,
+    reason: z.enum(WRITE_OFF_REASON_VALUES),
+    note: optionalText,
+  })
+  .refine((v) => v.reason !== "OTHER" || Boolean(v.note?.trim()), {
+    message: '"Бусад" шалтгаан сонгосон бол тайлбар бичнэ үү.',
+    path: ["note"],
+  });

@@ -3,6 +3,7 @@ import { AuthenticationError, AuthorizationError } from "@/lib/auth/guards";
 import { UnitConversionError } from "@/lib/units";
 import { InsufficientStockError } from "@/server/services/inventory";
 import { MissingRecipeError, SaleStockShortageError } from "@/server/services/sales";
+import { WriteOffStateError } from "@/server/services/write-offs";
 import { fail, type ActionState } from "@/lib/action-state";
 
 export { IDLE, ok, fail, type ActionState } from "@/lib/action-state";
@@ -14,6 +15,7 @@ const KNOWN_ERRORS = [
   SaleStockShortageError,
   MissingRecipeError,
   UnitConversionError,
+  WriteOffStateError,
 ];
 
 /**

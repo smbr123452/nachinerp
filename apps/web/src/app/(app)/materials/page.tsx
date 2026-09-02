@@ -1,5 +1,8 @@
 import { Prisma } from "@prisma/client";
+import Link from "next/link";
+import { FileMinus2 } from "lucide-react";
 import { PageHeader } from "@/components/layout/PageHeader";
+import { Button } from "@/components/ui/Button";
 import { Alert } from "@/components/ui/Alert";
 import { Badge } from "@/components/ui/Badge";
 import { Card } from "@/components/ui/Card";
@@ -73,6 +76,14 @@ export default async function MaterialsPage({ searchParams }: { searchParams: Se
         description={`Нийт ${materials.length} нэр төрөл · Нөөцийн өртөг ${formatMoney(totalValue)}`}
         action={
           <>
+            {/* Актын түүх нөөцийн хэсэгт байрлана — цэсийг нэмэлт
+                түвшнээр төвөгтэй болгохгүйн тулд эндээс хандана. */}
+            <Link href="/materials/write-offs">
+              <Button variant="secondary" size="sm">
+                <FileMinus2 className="h-4 w-4" />
+                Актаар хасалт
+              </Button>
+            </Link>
             <CategoryManagerButton
               kind="rawMaterial"
               categories={categoryRows}

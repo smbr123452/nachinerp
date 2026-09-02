@@ -1,5 +1,6 @@
 import { notFound } from "next/navigation";
 import { PageHeader } from "@/components/layout/PageHeader";
+import { WriteOffButton } from "../../materials/write-offs/WriteOffButton";
 import { Badge } from "@/components/ui/Badge";
 import { Card, CardBody, CardHeader } from "@/components/ui/Card";
 import { StatCard } from "@/components/ui/StatCard";
@@ -89,6 +90,13 @@ export default async function ProductDetailPage({ params }: { params: Params }) 
         backHref="/products"
         title={product.name}
         description={`${product.sku} · ${PRODUCT_TYPE_LABEL[product.productType]} · ${product.category?.name ?? "Ангилалгүй"}`}
+        /* Зөвхөн бэлэн бүтээгдэхүүн өөрийн нөөцтэй. Үйлдвэрлэдэг
+           бүтээгдэхүүнд актаар хасах утгагүй тул товч харагдахгүй. */
+        action={
+          isResale && product.isActive ? (
+            <WriteOffButton subject={`product:${product.id}`} />
+          ) : null
+        }
       />
 
       {!product.isActive ? (

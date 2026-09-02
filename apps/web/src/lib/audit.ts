@@ -42,6 +42,11 @@ export type AuditAction =
   | "INVENTORY_COUNT_CREATED"
   | "INVENTORY_COUNT_FINALIZED"
   | "INVENTORY_COUNT_CANCELLED"
+  | "WRITE_OFF_CREATED"
+  | "WRITE_OFF_UPDATED"
+  | "WRITE_OFF_DELETED"
+  | "WRITE_OFF_POSTED"
+  | "WRITE_OFF_REVERSED"
   | "MANUAL_ADJUSTMENT"
   | "BANK_DEPOSIT"
   | "MONEY_ADJUSTMENT"
@@ -100,6 +105,11 @@ export const AUDIT_ACTION_LABEL: Record<string, string> = {
   INVENTORY_COUNT_CREATED: "Тооллого үүсгэсэн",
   INVENTORY_COUNT_FINALIZED: "Тооллого баталгаажуулсан",
   INVENTORY_COUNT_CANCELLED: "Тооллого цуцалсан",
+  WRITE_OFF_CREATED: "Акт үүсгэсэн",
+  WRITE_OFF_UPDATED: "Акт засварласан",
+  WRITE_OFF_DELETED: "Ноорог акт устгасан",
+  WRITE_OFF_POSTED: "Акт баталсан",
+  WRITE_OFF_REVERSED: "Акт буцаасан",
   MANUAL_ADJUSTMENT: "Гар тохируулга хийсэн",
   BANK_DEPOSIT: "Банкинд тушаасан",
   MONEY_ADJUSTMENT: "Мөнгөн тохируулга хийсэн",

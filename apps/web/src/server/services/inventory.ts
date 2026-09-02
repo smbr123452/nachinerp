@@ -43,6 +43,7 @@ const INBOUND: MovementType[] = [
   "INVENTORY_COUNT_GAIN",
   "RETURN_IN",
   "CORRECTION_IN",
+  "WRITE_OFF_REVERSAL_IN",
 ];
 
 export function isInbound(type: MovementType): boolean {

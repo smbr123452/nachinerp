@@ -5,6 +5,7 @@ const SEQUENCES = {
   purchase: { seq: "purchase_no_seq", prefix: "ХА" },
   saleBatch: { seq: "sale_batch_no_seq", prefix: "БО" },
   inventoryCount: { seq: "inventory_count_no_seq", prefix: "ТО" },
+  writeOff: { seq: "write_off_no_seq", prefix: "АКТ" },
 } as const;
 
 export type DocumentKind = keyof typeof SEQUENCES;
