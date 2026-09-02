@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useMemo, useState } from "react";
+import { useActionState, useEffect, useMemo, useState } from "react";
 import { Plus, Trash2, Wand2 } from "lucide-react";
 import { Alert } from "@/components/ui/Alert";
 import { Button, SubmitButton } from "@/components/ui/Button";
@@ -11,6 +11,8 @@ import { Table, Td, Th, TotalRow, Tr } from "@/components/ui/Table";
 import { IDLE, type ActionState } from "@/lib/action-state";
 import { formatMoney, formatQty } from "@/lib/format";
 import { cn } from "@/lib/cn";
+import { buildSalePreview, type SaleProduct } from "@/lib/sale-consumption";
+import { Modal } from "@/components/ui/Modal";
 import { createSaleBatchAction } from "../actions";
 
 export type ProductOption = {
@@ -31,6 +33,11 @@ type Row = { productId: string; quantity: string; unitPrice: string };
 
 const EMPTY_ROW: Row = { productId: "", quantity: "", unitPrice: "" };
 
+/** Мөнгөн дүнг сервертэй ижилхэн 2 орон болгож харьцуулна. */
+function round2(value: number): number {
+  return Math.round(value * 100) / 100;
+}
+
 function toNumber(value: string): number {
   const parsed = Number(value.replace(/\s|,/g, ""));
   return Number.isFinite(parsed) ? parsed : 0;
@@ -49,10 +56,19 @@ export function SaleForm({
 }) {
   const [rows, setRows] = useState<Row[]>([{ ...EMPTY_ROW }]);
   const [payments, setPayments] = useState({ cash: "", card: "", qr: "", bankTransfer: "", other: "" });
-  const [state, formAction] = useActionState<ActionState, FormData>(createSaleBatchAction, IDLE);
+  const [state, formAction, isPending] = useActionState<ActionState, FormData>(
+    createSaleBatchAction,
+    IDLE,
+  );
 
   const productById = useMemo(() => new Map(products.map((p) => [p.id, p])), [products]);
   const stockByKey = useMemo(() => new Map(materials.map((m) => [m.key, m])), [materials]);
+
+  // Сөрөг үлдэгдлийн зөвшөөрөл нь REACT-ийн ТӨЛӨВ. Урьд нь энэ нь формын
+  // энгийн (uncontrolled) checkbox байсан бөгөөд React 19 нь action дуусахад
+  // формыг СЭРГЭЭДЭГ тул алдаа гарах бүрд чагт нь арилдаг байв.
+  const [allowNegative, setAllowNegative] = useState(false);
+  const [confirmOpen, setConfirmOpen] = useState(false);
 
   const total = rows.reduce((acc, row) => acc + toNumber(row.quantity) * toNumber(row.unitPrice), 0);
   const paymentTotal =
@@ -61,44 +77,30 @@ export function SaleForm({
     toNumber(payments.qr) +
     toNumber(payments.bankTransfer) +
     toNumber(payments.other);
-  const difference = total - paymentTotal;
-  const balanced = Math.abs(difference) <= 0.5 && total > 0;
+  const difference = round2(total - paymentTotal);
+  // Сервер нь ЯГ тэнцүү байхыг шаарддаг. Урьд нь клиент ±0.5₮ зөвшөөрдөг байсан
+  // тул 0.4₮-ийн зөрүү клиентээр гарч, сервер дээр унаж, ойлгомжгүй алдаа
+  // өгөөд формыг сэргээдэг байв. Одоо хоёр тал ижил дүрэмтэй.
+  const balanced = difference === 0 && total > 0;
   const filledRows = rows.filter((row) => row.productId && toNumber(row.quantity) > 0).length;
   const totalUnits = rows.reduce((acc, row) => acc + toNumber(row.quantity), 0);
 
-  // Хасагдах нөөцийг урьдчилан харуулна: жорын материал, эсвэл дамжуулан
-  // борлуулах бүтээгдэхүүн өөрөө.
-  const consumption = useMemo(() => {
-    const map = new Map<string, number>();
-    for (const row of rows) {
-      const product = productById.get(row.productId);
-      if (!product) continue;
-      const quantity = toNumber(row.quantity);
-      if (product.productType === "RESALE") {
-        const key = `pr:${product.id}`;
-        map.set(key, (map.get(key) ?? 0) + quantity);
-      } else {
-        for (const line of product.recipe) {
-          const key = `rm:${line.rawMaterialId}`;
-          map.set(key, (map.get(key) ?? 0) + line.baseQuantity * quantity);
-        }
-      }
-    }
-    return [...map.entries()]
-      .map(([key, required]) => {
-        const stock = stockByKey.get(key);
-        return {
-          key,
-          name: stock?.name ?? "",
-          unit: stock?.unit ?? "",
-          required,
-          available: stock?.quantity ?? 0,
-        };
-      })
-      .sort((a, b) => a.name.localeCompare(b.name, "mn"));
-  }, [rows, productById, stockByKey]);
+  // Хасагдах нөөц. Дүрэм нь сервертэй ГАНЦ файлаас гарна (sale-consumption),
+  // тиймээс урьдчилсан харагдац ба бодит хасалт салж чадахгүй.
+  const consumption = useMemo(
+    () =>
+      buildSalePreview(
+        rows.map((row) => ({ productId: row.productId, quantity: toNumber(row.quantity) })),
+        productById,
+        stockByKey,
+      ),
+    [rows, productById, stockByKey],
+  );
 
-  const shortages = consumption.filter((line) => line.required > line.available + 1e-9);
+  // Үлдэгдэл нь олдоогүй мөр — өгөгдлийн холболтын алдаа. Үүнийг нөөцийн
+  // дутагдал гэж тооцохгүй: эзний зөвшөөрлөөр "давж гарах" зүйл биш.
+  const unresolved = consumption.filter((line) => !line.resolved);
+  const shortages = consumption.filter((line) => line.short);
   const missingRecipe = rows
     .map((row) => productById.get(row.productId))
     .filter((product): product is ProductOption => product !== undefined && !product.hasRecipe);
@@ -113,9 +115,23 @@ export function SaleForm({
 
   const fillCash = () => setPayments((current) => ({ ...current, cash: String(total - (paymentTotal - toNumber(current.cash))) }));
 
+  // Дутагдал арилвал зөвшөөрлийг автоматаар унтраана — хуучирсан зөвшөөрөл
+  // санамсаргүйгээр илгээгдэхээс сэргийлнэ.
+  useEffect(() => {
+    if (shortages.length === 0 && allowNegative) setAllowNegative(false);
+  }, [shortages.length, allowNegative]);
+
+  const overrideActive = isOwner && allowNegative && shortages.length > 0;
+  // Тодорхойгүй мөр байвал ямар ч тохиолдолд илгээхгүй — эзний зөвшөөрөл ч
+  // үүнийг давж гарахгүй, учир нь энэ нь нөөцийн асуудал биш.
+  const blocked = !balanced || unresolved.length > 0 || (shortages.length > 0 && !overrideActive);
+
   return (
     <form action={formAction} className="space-y-6">
       {state.status === "error" && state.message ? <Alert tone="error">{state.message}</Alert> : null}
+
+      {/* Зөвшөөрлийг төлөвөөс шууд илгээнэ — формыг сэргээсэн ч төлөв хэвээр. */}
+      <input type="hidden" name="allowNegativeStock" value={overrideActive ? "on" : "off"} />
 
       <Card>
         <CardHeader title="Өдрийн мэдээлэл" />
@@ -241,35 +257,58 @@ export function SaleForm({
               </tr>
             </thead>
             <tbody>
-              {consumption.map((line) => {
-                const short = line.required > line.available + 1e-9;
-                return (
-                  <tr key={line.key} className={cn(short && "bg-red-50")}>
-                    <Td>{line.name}</Td>
-                    <Td align="right">
-                      {formatQty(line.required)} {line.unit}
-                    </Td>
-                    <Td align="right">{formatQty(line.available)}</Td>
-                    <Td align="right" className={short ? "font-semibold text-red-600" : ""}>
-                      {formatQty(line.available - line.required)}
-                    </Td>
-                  </tr>
-                );
-              })}
+              {consumption.map((line) => (
+                <tr
+                  key={line.key}
+                  className={cn(line.short && "bg-red-50", !line.resolved && "bg-amber-50")}
+                >
+                  <Td>
+                    {line.resolved ? (
+                      line.name
+                    ) : (
+                      <span className="text-amber-800">Тодорхойгүй бараа ({line.key})</span>
+                    )}
+                  </Td>
+                  <Td align="right">
+                    {formatQty(line.required)} {line.unit}
+                  </Td>
+                  <Td align="right">{line.resolved ? formatQty(line.available) : "—"}</Td>
+                  <Td align="right" className={line.short ? "font-semibold text-red-600" : ""}>
+                    {line.resolved ? formatQty(line.after) : "—"}
+                  </Td>
+                </tr>
+              ))}
             </tbody>
           </Table>
         </Card>
+      ) : null}
+
+      {unresolved.length > 0 ? (
+        <Alert tone="warning" title="Барааны үлдэгдэл тодорхойлогдсонгүй">
+          <p>
+            Дараах нөөцийн үлдэгдлийг уншиж чадсангүй: {unresolved.map((u) => u.key).join(", ")}.
+            Энэ нь нөөцийн дутагдал БИШ — өгөгдлийн холболтын алдаа тул эзний зөвшөөрлөөр
+            давж гарахгүй. Жор болон барааны бүртгэлээ шалгана уу.
+          </p>
+        </Alert>
       ) : null}
 
       {shortages.length > 0 ? (
         <Alert tone="error" title="Нөөц хүрэлцэхгүй байна">
           <p>{shortages.map((s) => s.name).join(", ")} — үлдэгдэл хүрэлцэхгүй.</p>
           {isOwner ? (
-            <div className="mt-2">
+            <div className="mt-2 space-y-2">
               <Checkbox
                 label="Сөрөг үлдэгдэл рүү орохыг зөвшөөрөх (эзний эрх)"
-                name="allowNegativeStock"
+                checked={allowNegative}
+                onChange={(event) => setAllowNegative(event.target.checked)}
               />
+              {allowNegative ? (
+                <p className="rounded-md bg-white/70 px-2.5 py-2 text-[13px] font-medium leading-5 text-red-800">
+                  Эзний зөвшөөрлөөр сөрөг үлдэгдэл үүснэ. Энэ зөвшөөрөл зөвхөн ЭНЭ борлуулалтад
+                  үйлчилнэ — системийн тохиргоо өөрчлөгдөхгүй.
+                </p>
+              ) : null}
             </div>
           ) : (
             <p className="mt-1">
@@ -355,11 +394,81 @@ export function SaleForm({
             : "Төлбөрийн хуваарилалт нийт орлоготой тэнцсэний дараа баталгаажуулах боломжтой."
         }
         action={
-          <SubmitButton size="lg" pendingText="Баталгаажуулж байна..." disabled={!balanced}>
-            Борлуулалт баталгаажуулах
-          </SubmitButton>
+          overrideActive ? (
+            <>
+              <Button
+                size="lg"
+                type="button"
+                onClick={() => setConfirmOpen(true)}
+                disabled={blocked || isPending}
+                loading={isPending}
+              >
+                {isPending ? "Баталгаажуулж байна..." : "Борлуулалт баталгаажуулах"}
+              </Button>
+              <button id="sale-submit" type="submit" hidden aria-hidden tabIndex={-1} />
+            </>
+          ) : (
+            <SubmitButton size="lg" pendingText="Баталгаажуулж байна..." disabled={blocked}>
+              Борлуулалт баталгаажуулах
+            </SubmitButton>
+          )
         }
       />
+
+      {/* Сөрөг үлдэгдэл үүсгэхийн өмнөх эцсийн баталгаажуулалт. */}
+      <Modal
+        open={confirmOpen}
+        onClose={() => setConfirmOpen(false)}
+        title="Сөрөг үлдэгдэл үүсгэхийг батлах"
+        tone="danger"
+        description="Доорх барааны үлдэгдэл сөрөг болно. Энэ зөвшөөрөл зөвхөн энэ борлуулалтад үйлчилнэ."
+        footer={
+          <>
+            <Button variant="secondary" onClick={() => setConfirmOpen(false)}>
+              Буцах
+            </Button>
+            <Button
+              variant="danger"
+              disabled={isPending}
+              loading={isPending}
+              onClick={() => {
+                setConfirmOpen(false);
+                document.getElementById("sale-submit")?.click();
+              }}
+            >
+              Зөвшөөрч баталгаажуулах
+            </Button>
+          </>
+        }
+      >
+        <ul className="divide-y divide-ink-200 rounded-card border border-ink-200">
+          {shortages.map((line) => (
+            <li key={line.key} className="px-3 py-2 text-sm">
+              <div className="font-medium text-ink-900">{line.name}</div>
+              <dl className="mt-1 grid grid-cols-3 gap-2 text-[12px] text-ink-500">
+                <div>
+                  <dt>Одоо</dt>
+                  <dd className="tabular text-ink-700">
+                    {formatQty(line.available)} {line.unit}
+                  </dd>
+                </div>
+                <div>
+                  <dt>Шаардлагатай</dt>
+                  <dd className="tabular text-ink-700">
+                    {formatQty(line.required)} {line.unit}
+                  </dd>
+                </div>
+                <div>
+                  <dt>Дараах</dt>
+                  <dd className="tabular font-semibold text-red-600">
+                    {formatQty(line.after)} {line.unit}
+                  </dd>
+                </div>
+              </dl>
+            </li>
+          ))}
+        </ul>
+      </Modal>
     </form>
   );
 }

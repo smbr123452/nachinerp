@@ -15,7 +15,8 @@
     "typecheck": "tsc --noEmit",
     "verify": "tsx scripts/verify-integrity.ts",
     "test:master-data": "tsx --conditions=react-server scripts/test-master-data.ts",
-    "test:write-offs": "tsx --conditions=react-server scripts/test-write-offs.ts"
+    "test:write-offs": "tsx --conditions=react-server scripts/test-write-offs.ts",
+    "test:sales-inventory": "tsx --conditions=react-server scripts/test-sales-inventory.ts"
   },
   "dependencies": {
     "@prisma/client": "^6.0.0",

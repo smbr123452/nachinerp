@@ -251,13 +251,16 @@ export async function postSalesBatch(
     const totalRevenue = money(lines.reduce<Dec>((acc, l) => acc.plus(l.total), ZERO));
     if (!paymentTotal.equals(totalRevenue)) {
       throw new Error(
-        `Төлбөрийн хуваарилалт (${paymentTotal.toFixed(0)}₮) нийт орлоготой (${totalRevenue.toFixed(0)}₮) тэнцэхгүй байна.`,
+        `Төлбөрийн хуваарилалт (${paymentTotal.toFixed(2)}₮) нийт орлоготой ` +
+          `(${totalRevenue.toFixed(2)}₮) тэнцэхгүй байна. ` +
+          `Зөрүү: ${paymentTotal.minus(totalRevenue).toFixed(2)}₮.`,
       );
     }
 
-    if (!input.allowNegativeStock) {
-      const shortages = findShortages(consumption);
-      if (shortages.length > 0) throw new SaleStockShortageError(shortages);
+    // Дутагдлыг ҮРГЭЛЖ тооцно — зөвшөөрөлтэй үед ч аудитад бичихийн тулд.
+    const shortages = findShortages(consumption);
+    if (!input.allowNegativeStock && shortages.length > 0) {
+      throw new SaleStockShortageError(shortages);
     }
 
     const totalCogs = money(lines.reduce<Dec>((acc, l) => acc.plus(l.totalCost), ZERO));
@@ -345,8 +348,26 @@ export async function postSalesBatch(
           totalCogs: totalCogs.toString(),
           grossProfit: grossProfit.toString(),
           negativeStockOverride: Boolean(input.allowNegativeStock),
+          // Зөвшөөрлөөр сөрөг болсон бараа бүрийг нэрлэн үлдээнэ: юу, хэдээс,
+          // хэд болсныг хожим тайлбарлах боломжтой байх ёстой.
+          ...(input.allowNegativeStock && shortages.length > 0
+            ? {
+                negativeStockSubjects: shortages.map((s) => ({
+                  key: s.key,
+                  name: s.materialName,
+                  unit: s.unit,
+                  beforeQuantity: s.available,
+                  requiredQuantity: s.required,
+                  afterQuantity: d(s.available).minus(d(s.required)).toFixed(3),
+                })),
+              }
+            : {}),
         },
-        note: input.allowNegativeStock ? "Сөрөг үлдэгдлийг эзэн зөвшөөрсөн." : null,
+        note: input.allowNegativeStock
+          ? shortages.length > 0
+            ? `Сөрөг үлдэгдлийг эзэн зөвшөөрсөн: ${shortages.map((s) => s.materialName).join(", ")}.`
+            : "Эзний зөвшөөрөл идэвхтэй байсан ч сөрөг үлдэгдэл үүсээгүй."
+          : null,
         ipAddress: input.ipAddress,
       },
       tx,
