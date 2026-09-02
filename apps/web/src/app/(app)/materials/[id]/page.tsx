@@ -92,7 +92,7 @@ export default async function MaterialDetailPage({
         }
       />
 
-      <div className="mb-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+      <div className="mb-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <StatCard
           label="Одоогийн үлдэгдэл"
           value={`${formatQty(material.quantity)} ${unit}`}
@@ -113,7 +113,7 @@ export default async function MaterialDetailPage({
       />
 
       {tab === "overview" ? (
-        <div className="grid gap-3 lg:grid-cols-2">
+        <div className="grid gap-4 lg:grid-cols-2">
           <Card>
             <CardHeader title="Мэдээлэл" />
             <Table>
@@ -317,7 +317,7 @@ export default async function MaterialDetailPage({
 
       {tab === "prices" ? (
         <>
-        <Card className="mb-4">
+        <Card className="mb-6">
           <CardHeader
             title="Нийлүүлэгч тус бүрийн сүүлийн үнэ"
             description="Батлагдсан худалдан авалтын түүхээс. Хамгийн хямдыг нь тодруулав."

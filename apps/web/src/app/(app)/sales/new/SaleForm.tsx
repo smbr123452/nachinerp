@@ -352,7 +352,7 @@ export function SaleForm({
             ))}
           </div>
 
-          <div className="mt-4 flex flex-wrap items-center justify-between gap-3 rounded-lg bg-ink-50 px-4 py-3">
+          <div className="mt-4 flex flex-wrap items-center justify-between gap-3 rounded-lg border border-ink-200 bg-ink-50 px-4 py-3">
             <dl className="flex flex-wrap gap-x-8 gap-y-2 text-[13px]">
               <div>
                 <dt className="text-ink-500">Нийт орлого</dt>
@@ -439,7 +439,7 @@ export function SaleForm({
               Буцах
             </Button>
             <Button
-              variant="dangerSolid"
+              variant="danger"
               disabled={isPending}
               loading={isPending}
               onClick={() => {

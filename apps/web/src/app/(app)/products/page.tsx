@@ -5,7 +5,7 @@ import { PageHeader } from "@/components/layout/PageHeader";
 import { Button } from "@/components/ui/Button";
 import { ActiveBadge, Badge } from "@/components/ui/Badge";
 import { Card } from "@/components/ui/Card";
-import { EmptyRow, MonoText, Table, TableActions, TableLink, Td, Th, Tr } from "@/components/ui/Table";
+import { EmptyRow, MonoText, Table, TableLink, Td, Th, Tr } from "@/components/ui/Table";
 import { FilterBar, FilterSelect, SearchInput } from "@/components/ui/SearchFilters";
 import { requirePageUser } from "@/lib/auth/guards";
 import { d, ZERO } from "@/lib/decimal";
@@ -184,34 +184,32 @@ export default async function ProductsPage({ searchParams }: { searchParams: Sea
                       <ActiveBadge active={product.isActive} />
                     </Td>
                     <Td align="right">
-                      <TableActions>
-                        <EditProductButton
-                          categories={categories}
-                          product={{
-                            id: product.id,
-                            sku: product.sku,
-                            name: product.name,
-                            categoryId: product.categoryId,
-                            productType: product.productType,
-                            sellingPrice: product.sellingPrice.toString(),
-                            isActive: product.isActive,
-                            unit: product.unit,
-                            minimumStock: product.minimumStock.toString(),
-                            hasStock: !d(product.quantity).equals(0),
-                            hasRecipe,
-                          }}
+                      <EditProductButton
+                        categories={categories}
+                        product={{
+                          id: product.id,
+                          sku: product.sku,
+                          name: product.name,
+                          categoryId: product.categoryId,
+                          productType: product.productType,
+                          sellingPrice: product.sellingPrice.toString(),
+                          isActive: product.isActive,
+                          unit: product.unit,
+                          minimumStock: product.minimumStock.toString(),
+                          hasStock: !d(product.quantity).equals(0),
+                          hasRecipe,
+                        }}
+                      />
+                      {user.role === "OWNER" ? (
+                        <DeleteRecordButton
+                          id={product.id}
+                          action={deleteProductAction}
+                          title="Бүтээгдэхүүн устгах"
+                          description={`"${product.name}"-г бүр мөсөн устгах уу? Энэ үйлдлийг буцаах боломжгүй.`}
+                          blocked={usedIds.has(product.id)}
+                          blockedReason="Түүхэнд ашиглагдсан тул устгах боломжгүй. Идэвхгүй болгоно уу."
                         />
-                        {user.role === "OWNER" ? (
-                          <DeleteRecordButton
-                            id={product.id}
-                            action={deleteProductAction}
-                            title="Бүтээгдэхүүн устгах"
-                            description={`"${product.name}"-г бүр мөсөн устгах уу? Энэ үйлдлийг буцаах боломжгүй.`}
-                            blocked={usedIds.has(product.id)}
-                            blockedReason="Түүхэнд ашиглагдсан тул устгах боломжгүй. Идэвхгүй болгоно уу."
-                          />
-                        ) : null}
-                      </TableActions>
+                      ) : null}
                     </Td>
                   </Tr>
                 );

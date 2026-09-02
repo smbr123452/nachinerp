@@ -122,7 +122,7 @@ export default async function SupplierDetailPage({ params }: { params: Params })
         }
       />
 
-      <div className="mb-4 flex flex-wrap items-center gap-x-6 gap-y-2 rounded-card border border-ink-200 bg-white px-4 py-3 shadow-card">
+      <div className="mb-6 flex flex-wrap items-center gap-x-6 gap-y-2 rounded-card border border-ink-200 bg-white px-4 py-3 shadow-card">
         <ActiveBadge active={supplier.isActive} />
         <span className="text-[13px] text-ink-500">
           Холбогдсон бараа: <span className="tabular font-medium text-ink-900">{items.length}</span>
@@ -138,13 +138,13 @@ export default async function SupplierDetailPage({ params }: { params: Params })
         ) : null}
       </div>
 
-      <Card className="mb-4">
+      <Card className="mb-6">
         <SupplierItems supplierId={supplier.id} items={itemViews} eligible={eligible} />
       </Card>
 
       {/* Нийлүүлэгчийн өглөг. Төлбөрийг худалдан авалтын хуудаснаас бүртгэнэ —
           нэг төлбөр нэг өглөгийг хаана. */}
-      <Card className="mb-4">
+      <Card className="mb-6">
         <CardHeader
           title="Нийлүүлэгчийн өглөг"
           description="Зээлээр авсан, төлөгдөөгүй үлдэгдэлтэй худалдан авалтууд."
@@ -229,7 +229,7 @@ export default async function SupplierDetailPage({ params }: { params: Params })
         </Table>
       </Card>
 
-      <Card className="mb-4">
+      <Card className="mb-6">
         <CardHeader
           title="Өглөгийн төлбөрийн түүх"
           description="Мөнгө гарсан бичилтүүд. Эдгээр нь шинэ зардал биш — өр барагдуулалт."

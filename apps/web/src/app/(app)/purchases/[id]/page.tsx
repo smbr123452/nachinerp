@@ -94,7 +94,7 @@ export default async function PurchaseDetailPage({ params }: { params: Params })
         </Alert>
       ) : null}
 
-      <Card className="mb-4">
+      <Card className="mb-6">
         <CardHeader title="Худалдан авсан бараа" />
         <Table>
           <thead>
@@ -154,7 +154,7 @@ export default async function PurchaseDetailPage({ params }: { params: Params })
         />
       ) : null}
 
-      <Card className="mb-4">
+      <Card className="mb-6">
         <CardHeader
           title="Баримтын зураг"
           description="Баталгаажуулах үед хавсаргасан. Зөвхөн нэвтэрсэн хэрэглэгч үзнэ."

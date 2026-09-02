@@ -50,6 +50,7 @@ export function ConfirmDialog({
       description={description}
       tone="danger"
       size="sm"
+      headerDivider={false}
       bodyClassName="p-0"
     >
       <form action={action}>

@@ -39,9 +39,6 @@ export function DeleteRecordButton({
 
   return (
     <>
-      {/* Тайван анхдагч төлөв: хүснэгтийн мөр бүрд улаан товч анивчвал
-          устгах үйлдэл хамгийн их анхаарал татах болно. Улаан нь зөвхөн
-          хулгана дээр очиход гарна. */}
       <Button
         variant="ghost"
         size="sm"
@@ -49,7 +46,7 @@ export function DeleteRecordButton({
         disabled={blocked}
         title={blocked ? blockedReason : title}
         onClick={() => setOpen(true)}
-        className={blocked ? undefined : "text-ink-500 hover:bg-red-50 hover:text-red-700"}
+        className={blocked ? undefined : "text-red-600 hover:bg-red-50 hover:text-red-700"}
       >
         {label}
       </Button>

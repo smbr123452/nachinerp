@@ -159,7 +159,7 @@ export function RecipeEditor({
         </tbody>
       </Table>
 
-      <div className="flex flex-wrap items-center justify-between gap-4 rounded-lg bg-ink-50 px-4 py-3">
+      <div className="flex flex-wrap items-center justify-between gap-4 rounded-lg border border-ink-200 bg-ink-50 px-4 py-3">
         <Button
           variant="secondary"
           size="sm"

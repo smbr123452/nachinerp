@@ -158,7 +158,7 @@ export function PayablePanel({
                         variant="ghost"
                         size="sm"
                         onClick={() => setReverseId(payment.id)}
-                        className="text-ink-500 hover:bg-red-50 hover:text-red-700"
+                        className="text-red-700 hover:bg-red-50"
                       >
                         Буцаах
                       </Button>

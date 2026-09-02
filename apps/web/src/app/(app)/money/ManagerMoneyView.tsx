@@ -30,7 +30,7 @@ export async function ManagerMoneyView({ filters }: { filters: LedgerFilters }) 
         }
       />
 
-      <section className="mb-4 grid auto-rows-fr gap-3 sm:grid-cols-2 xl:grid-cols-4">
+      <section className="mb-6 grid auto-rows-fr gap-3 sm:grid-cols-2 xl:grid-cols-4">
         <StatCard
           emphasis
           label="Банканд тушаах мөнгө"
@@ -61,7 +61,7 @@ export async function ManagerMoneyView({ filters }: { filters: LedgerFilters }) 
         />
       </section>
 
-      <div className="mb-4 grid items-start gap-3 xl:grid-cols-3">
+      <div className="mb-4 grid items-start gap-4 xl:grid-cols-3">
         <Card className="xl:col-span-2">
           <CardBody className="flex flex-wrap items-center justify-between gap-4">
             <div className="min-w-0">

@@ -11,11 +11,11 @@ export function FilterBar({ children, className }: { children: ReactNode; classN
   return (
     <div
       className={cn(
-        "no-print mb-4 flex flex-wrap items-end gap-x-3 gap-y-2.5 rounded-card border border-ink-200 bg-white px-4 py-2.5 shadow-card",
+        "no-print mb-4 flex flex-wrap items-end gap-3 rounded-card border border-ink-200 bg-white px-4 py-3 shadow-card",
         className,
       )}
     >
-      <SlidersHorizontal aria-hidden className="mb-2 h-4 w-4 shrink-0 text-ink-400" />
+      <SlidersHorizontal aria-hidden className="mb-2.5 h-4 w-4 shrink-0 text-ink-400" />
       {children}
     </div>
   );
@@ -38,7 +38,7 @@ function useQueryUpdater() {
   return { params, update, pending };
 }
 
-const LABEL = "mb-1 block text-xs font-medium leading-4 text-ink-500";
+const LABEL = "mb-1.5 block text-[13px] font-medium leading-5 text-ink-700";
 
 export function SearchInput({
   paramKey = "q",

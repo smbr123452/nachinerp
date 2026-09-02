@@ -10,7 +10,6 @@ import {
   SearchableCombobox,
   type ComboboxOption,
 } from "@/components/ui/SearchableCombobox";
-import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { Modal, ModalActions } from "@/components/ui/Modal";
 import { EmptyRow, Table, TableLink, Td, Th, Tr } from "@/components/ui/Table";
 import { IDLE, type ActionState } from "@/lib/action-state";
@@ -93,7 +92,7 @@ export function SupplierItems({
             {/* Үйлдлийн багана нь хүснэгт хэвтээ гүйхэд ч баруун ирмэгт
                 наалдаж, ҮРГЭЛЖ харагдана. Нарийн дэлгэц эсвэл томруулсан
                 хөтөч дээр товч харагдахгүй болох асуудлыг зогсооно. */}
-            <Th align="right" stickyRight />
+            <Th align="right" className="sticky right-0 z-10 bg-ink-50" />
           </tr>
         </thead>
         <tbody>
@@ -132,7 +131,7 @@ export function SupplierItems({
                     "—"
                   )}
                 </Td>
-                <Td align="right" stickyRight>
+                <Td align="right" className="sticky right-0 z-10 bg-white">
                   <RemoveItemButton item={item} />
                 </Td>
               </Tr>
@@ -243,18 +242,27 @@ function RemoveItemButton({ item }: { item: SupplierItemView }) {
           {state.message}
         </Alert>
       ) : null}
-      <ConfirmDialog
+      <Modal
         open={open}
         onClose={() => setOpen(false)}
         title="Холбоос салгах"
         description={`"${item.name}"-г энэ нийлүүлэгчээс салгах уу? Зөвхөн сонголт устана — худалдан авалтын түүх, үнэ, нөөц хэвээр үлдэнэ.`}
-        confirmLabel="Салгах"
-        hiddenFields={{ supplierItemId: item.id }}
-        action={(formData) => {
-          setOpen(false);
-          formAction(formData);
-        }}
-      />
+      >
+        <form
+          action={(formData) => {
+            setOpen(false);
+            formAction(formData);
+          }}
+        >
+          <input type="hidden" name="supplierItemId" value={item.id} />
+          <ModalActions>
+            <Button variant="secondary" onClick={() => setOpen(false)}>
+              Болих
+            </Button>
+            <SubmitButton variant="danger">Салгах</SubmitButton>
+          </ModalActions>
+        </form>
+      </Modal>
     </>
   );
 }

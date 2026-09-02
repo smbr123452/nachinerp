@@ -107,7 +107,7 @@ export default async function ProductDetailPage({ params }: { params: Params }) 
 
       {/* Санхүүгийн хураангуй. Өртгийн эх сурвалж төрлөөс хамаарна:
           үйлдвэрлэдэг — жорноос, бэлэн бүтээгдэхүүн — авалтын дунджаас. */}
-      <div className="mb-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+      <div className="mb-4 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <StatCard
           label={isResale ? "Дундаж өртөг" : "Жорын өртөг"}
           value={fin.unitCost ? formatMoney(fin.unitCost) : "—"}
@@ -130,7 +130,7 @@ export default async function ProductDetailPage({ params }: { params: Params }) 
       {/* Бэлэн бүтээгдэхүүний нэмэлт мөр: үлдэгдэл ба сүүлийн авалт.
           Тус бүрийг том хайрцаг болгохгүй — нэг эгнээнд товч харуулна. */}
       {isResale ? (
-        <div className="mb-4 flex flex-wrap items-center gap-x-6 gap-y-2 rounded-card border border-ink-200 bg-white px-4 py-3 shadow-card">
+        <div className="mb-6 flex flex-wrap items-center gap-x-6 gap-y-2 rounded-card border border-ink-200 bg-white px-4 py-3 shadow-card">
           <span className="text-[13px] text-ink-500">
             Үлдэгдэл:{" "}
             <span className={cn("tabular font-medium", isLowStock ? "text-red-600" : "text-ink-900")}>
@@ -158,7 +158,7 @@ export default async function ProductDetailPage({ params }: { params: Params }) 
       ) : null}
 
       {isResale ? (
-        <Card className="mb-4">
+        <Card className="mb-6">
           <CardHeader
             title="Нөөцийн хөдөлгөөн"
             description="Сүүлийн 100 бичлэг. Худалдан авалтаар нэмэгдэж, борлуулалтаар хасагдана."
@@ -201,7 +201,7 @@ export default async function ProductDetailPage({ params }: { params: Params }) 
           </Table>
         </Card>
       ) : (
-        <Card className="mb-4">
+        <Card className="mb-6">
           <CardHeader
             title="Жор (BOM)"
             description="Борлуулалт бүртгэхэд эдгээр материал автоматаар хасагдана."
@@ -217,7 +217,7 @@ export default async function ProductDetailPage({ params }: { params: Params }) 
         </Card>
       )}
 
-      <div className={isResale ? "grid gap-3" : "grid gap-3 lg:grid-cols-2"}>
+      <div className={isResale ? "grid gap-4" : "grid gap-4 lg:grid-cols-2"}>
         {isResale ? null : (
         <Card>
           <CardHeader title="Одоогийн жорын задаргаа" />

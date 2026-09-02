@@ -18,7 +18,6 @@ export function CancelDocumentButton({
   description = "Энэ баримт устахгүй. Цуцлалтын бичилт үүсч, нөөц болон мөнгөний хөдөлгөөн буцаагдана.",
   buttonLabel = "Цуцлах",
   size = "sm",
-  variant = "danger",
 }: {
   id: string;
   action: (prev: ActionState, formData: FormData) => Promise<ActionState>;
@@ -26,24 +25,13 @@ export function CancelDocumentButton({
   description?: string;
   buttonLabel?: string;
   size?: "sm" | "md";
-  /**
-   * danger — хуудасны гол устгах/цуцлах үйлдэл (баримтын дэлгэрэнгүй).
-   * ghost — хүснэгтийн мөр бүрд давтагдах үйлдэл: улаан товч мөр болж
-   * эгнэвэл хуудасны хамгийн тод элемент нь цуцлалт болно.
-   */
-  variant?: "danger" | "ghost";
 }) {
   const [open, setOpen] = useState(false);
   const [state, formAction] = useActionState<ActionState, FormData>(action, IDLE);
 
   return (
     <>
-      <Button
-        variant={variant}
-        size={size}
-        onClick={() => setOpen(true)}
-        className={variant === "ghost" ? "text-ink-500 hover:bg-red-50 hover:text-red-700" : undefined}
-      >
+      <Button variant="danger" size={size} onClick={() => setOpen(true)}>
         {buttonLabel}
       </Button>
 

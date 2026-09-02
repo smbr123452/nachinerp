@@ -56,7 +56,7 @@ export default async function ReportsPage({ searchParams }: { searchParams: Sear
         description={`${formatDate(range.from)} — ${formatDate(new Date(range.to.getTime() - 1))}`}
       />
 
-      <div className="mb-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+      <div className="mb-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <StatCard label="Нийт орлого" value={formatMoney(summary.revenue)} />
         <StatCard label="Борлуулсан бүтээгдэхүүний өртөг" value={formatMoney(summary.cogs)} />
         <StatCard label="Нийт ашиг" value={formatMoney(summary.grossProfit)} tone="positive" />

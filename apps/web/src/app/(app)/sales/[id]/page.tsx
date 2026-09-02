@@ -72,14 +72,14 @@ export default async function SaleDetailPage({ params }: { params: Params }) {
         </Alert>
       ) : null}
 
-      <div className="mb-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+      <div className="mb-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <StatCard label="Нийт орлого" value={formatMoney(batch.totalRevenue)} />
         <StatCard label="Борлуулсан бүтээгдэхүүний өртөг" value={formatMoney(batch.totalCogs)} />
         <StatCard label="Нийт ашиг" value={formatMoney(batch.grossProfit)} tone="positive" />
         <StatCard label="Ашгийн хувь" value={formatPercent(margin.toNumber())} />
       </div>
 
-      <div className="mb-4 grid gap-3 lg:grid-cols-3">
+      <div className="mb-6 grid gap-4 lg:grid-cols-3">
         <Card className="lg:col-span-2">
           <CardHeader title="Борлуулсан бүтээгдэхүүн" />
           <Table>

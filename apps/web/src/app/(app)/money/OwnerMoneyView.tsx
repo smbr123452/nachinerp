@@ -122,7 +122,7 @@ export async function OwnerMoneyView({
       </section>
 
       {/* Өнөөдөр / энэ сар */}
-      <section className="mb-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+      <section className="mb-6 grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
         <FlowSummary
           title="Өнөөдөр"
           inflow={formatMoney(data.today.inflow)}
@@ -168,7 +168,7 @@ export async function OwnerMoneyView({
         </CardBody>
       </Card>
 
-      <div className="mb-4 grid items-start gap-3 xl:grid-cols-3">
+      <div className="mb-4 grid items-start gap-4 xl:grid-cols-3">
         <Card>
           <CardHeader title="Мөнгөний бүтэц" description="Данс тус бүрийн одоогийн байдал" />
           <CardBody>
@@ -218,7 +218,7 @@ export async function OwnerMoneyView({
         params={payableParams}
       />
 
-      <div className="mb-4 grid items-start gap-3 xl:grid-cols-3">
+      <div className="mb-4 grid items-start gap-4 xl:grid-cols-3">
         <Card>
           <CardHeader
             title="Сүүлийн банкны тушаалт"

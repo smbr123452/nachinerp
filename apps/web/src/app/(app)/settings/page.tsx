@@ -1,7 +1,7 @@
 import { PageHeader } from "@/components/layout/PageHeader";
 import { Badge } from "@/components/ui/Badge";
 import { Card, CardBody, CardHeader } from "@/components/ui/Card";
-import { EmptyRow, Table, TableActions, Td, Th, Tr } from "@/components/ui/Table";
+import { EmptyRow, Table, Td, Th, Tr } from "@/components/ui/Table";
 import { requirePageOwner } from "@/lib/auth/guards";
 import { ROLE_LABEL } from "@/lib/auth/session";
 import { formatDate } from "@/lib/format";
@@ -25,7 +25,7 @@ export default async function SettingsPage() {
     <>
       <PageHeader title="Тохиргоо" description="Зөвхөн эзэн хандах хэсэг" />
 
-      <Card className="mb-4">
+      <Card className="mb-6">
         <CardHeader title="Системийн тохиргоо" />
         <CardBody>
           <SettingsForm companyName={companyName} allowNegativeStock={allowNegative} />
@@ -65,17 +65,15 @@ export default async function SettingsPage() {
                   </Td>
                   <Td className="text-ink-500">{formatDate(user.createdAt)}</Td>
                   <Td align="right">
-                    <TableActions>
-                      <EditUserButton
-                        user={{
-                          id: user.id,
-                          name: user.name,
-                          email: user.email,
-                          role: user.role,
-                          isActive: user.isActive,
-                        }}
-                      />
-                    </TableActions>
+                    <EditUserButton
+                      user={{
+                        id: user.id,
+                        name: user.name,
+                        email: user.email,
+                        role: user.role,
+                        isActive: user.isActive,
+                      }}
+                    />
                   </Td>
                 </Tr>
               ))

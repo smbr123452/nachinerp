@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/Button";
 import { Alert } from "@/components/ui/Alert";
 import { Badge } from "@/components/ui/Badge";
 import { Card } from "@/components/ui/Card";
-import { EmptyRow, MonoText, Table, TableActions, TableLink, Td, Th, Tr } from "@/components/ui/Table";
+import { EmptyRow, MonoText, Table, TableLink, Td, Th, Tr } from "@/components/ui/Table";
 import { FilterBar, FilterSelect, SearchInput } from "@/components/ui/SearchFilters";
 import { requirePageUser } from "@/lib/auth/guards";
 import { d, sum } from "@/lib/decimal";
@@ -163,31 +163,29 @@ export default async function MaterialsPage({ searchParams }: { searchParams: Se
                     {formatMoney(value)}
                   </Td>
                   <Td align="right">
-                    <TableActions>
-                      <EditMaterialButton
-                        categories={categories}
-                        material={{
-                          id: material.id,
-                          sku: material.sku,
-                          name: material.name,
-                          categoryId: material.categoryId,
-                          unit: material.unit,
-                          minimumStock: material.minimumStock.toString(),
-                          isActive: material.isActive,
-                          hasStock: !d(material.quantity).isZero(),
-                        }}
+                    <EditMaterialButton
+                      categories={categories}
+                      material={{
+                        id: material.id,
+                        sku: material.sku,
+                        name: material.name,
+                        categoryId: material.categoryId,
+                        unit: material.unit,
+                        minimumStock: material.minimumStock.toString(),
+                        isActive: material.isActive,
+                        hasStock: !d(material.quantity).isZero(),
+                      }}
+                    />
+                    {user.role === "OWNER" ? (
+                      <DeleteRecordButton
+                        id={material.id}
+                        action={deleteRawMaterialAction}
+                        title="Бараа материал устгах"
+                        description={`"${material.name}"-г бүр мөсөн устгах уу? Энэ үйлдлийг буцаах боломжгүй.`}
+                        blocked={usedIds.has(material.id)}
+                        blockedReason="Түүхэнд ашиглагдсан тул устгах боломжгүй. Идэвхгүй болгоно уу."
                       />
-                      {user.role === "OWNER" ? (
-                        <DeleteRecordButton
-                          id={material.id}
-                          action={deleteRawMaterialAction}
-                          title="Бараа материал устгах"
-                          description={`"${material.name}"-г бүр мөсөн устгах уу? Энэ үйлдлийг буцаах боломжгүй.`}
-                          blocked={usedIds.has(material.id)}
-                          blockedReason="Түүхэнд ашиглагдсан тул устгах боломжгүй. Идэвхгүй болгоно уу."
-                        />
-                      ) : null}
-                    </TableActions>
+                    ) : null}
                   </Td>
                 </Tr>
               ))

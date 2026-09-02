@@ -226,7 +226,7 @@ function CategoryLine({
                       : "Бүр мөсөн устгах"
                   }
                   onClick={() => setConfirming(true)}
-                  className={inUse ? undefined : "text-ink-500 hover:bg-red-50 hover:text-red-700"}
+                  className={inUse ? undefined : "text-red-600 hover:bg-red-50 hover:text-red-700"}
                 >
                   Устгах
                 </Button>
