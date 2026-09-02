@@ -92,6 +92,8 @@ export async function getPendingBankDeposit(tx: Tx = prisma): Promise<Dec> {
 }
 
 export const MONEY_TYPE_LABEL: Record<MoneyTransactionType, string> = {
+  SUPPLIER_PAYMENT_OUT: "Нийлүүлэгчид төлсөн",
+  SUPPLIER_PAYMENT_REVERSAL_IN: "Нийлүүлэгчийн төлбөр буцаалт",
   SALE_CASH_IN: "Борлуулалт — бэлэн",
   SALE_BANK_IN: "Борлуулалт — банк",
   PURCHASE_PAYMENT_OUT: "Худалдан авалтын төлбөр",
