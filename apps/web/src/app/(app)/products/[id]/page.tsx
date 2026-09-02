@@ -1,6 +1,6 @@
 import { notFound } from "next/navigation";
 import { PageHeader } from "@/components/layout/PageHeader";
-import { WriteOffButton } from "../../materials/write-offs/WriteOffButton";
+import { WriteOffButton } from "@/components/write-offs/WriteOffButton";
 import { Badge } from "@/components/ui/Badge";
 import { Card, CardBody, CardHeader } from "@/components/ui/Card";
 import { StatCard } from "@/components/ui/StatCard";
@@ -94,7 +94,7 @@ export default async function ProductDetailPage({ params }: { params: Params }) 
            бүтээгдэхүүнд актаар хасах утгагүй тул товч харагдахгүй. */
         action={
           isResale && product.isActive ? (
-            <WriteOffButton subject={`product:${product.id}`} />
+            <WriteOffButton context="PRODUCT" subject={`product:${product.id}`} />
           ) : null
         }
       />

@@ -81,7 +81,7 @@ export default async function MaterialsPage({ searchParams }: { searchParams: Se
             <Link href="/materials/write-offs">
               <Button variant="secondary" size="sm">
                 <FileMinus2 className="h-4 w-4" />
-                Актаар хасалт
+                АКТ
               </Button>
             </Link>
             <CategoryManagerButton

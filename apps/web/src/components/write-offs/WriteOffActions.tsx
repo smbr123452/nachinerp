@@ -9,7 +9,12 @@ import { Card, CardBody, CardHeader } from "@/components/ui/Card";
 import { Field, Textarea } from "@/components/ui/Field";
 import { Modal } from "@/components/ui/Modal";
 import { IDLE, type ActionState } from "@/lib/action-state";
-import { deleteWriteOffAction, postWriteOffAction, reverseWriteOffAction } from "./actions";
+import type { WriteOffContext } from "@/lib/write-offs";
+import {
+  deleteWriteOffAction,
+  postWriteOffAction,
+  reverseWriteOffAction,
+} from "@/app/(app)/write-off-actions";
 import { ConfirmWriteOffModal, type ConfirmLine } from "./ConfirmWriteOffModal";
 
 /**
@@ -19,6 +24,7 @@ import { ConfirmWriteOffModal, type ConfirmLine } from "./ConfirmWriteOffModal";
  * хамгаалагдсан. Энд эрхийг зөвхөн харагдац төдийд шалгана.
  */
 export function WriteOffActions({
+  context,
   writeOffId,
   documentNo,
   status,
@@ -28,6 +34,7 @@ export function WriteOffActions({
   lines,
   totalCost,
 }: {
+  context: WriteOffContext;
   writeOffId: string;
   documentNo: string;
   status: DocStatus;
@@ -79,6 +86,7 @@ export function WriteOffActions({
 
             <form action={postAction}>
               <input type="hidden" name="writeOffId" value={writeOffId} />
+              <input type="hidden" name="context" value={context} />
               <input type="hidden" name="idempotencyKey" value={idempotencyKey} />
               <Button
                 type="button"
@@ -93,6 +101,7 @@ export function WriteOffActions({
 
             <form action={deleteAction}>
               <input type="hidden" name="writeOffId" value={writeOffId} />
+              <input type="hidden" name="context" value={context} />
               <Button type="submit" variant="ghost" size="sm" className="w-full" disabled={deleting}>
                 Ноорог устгах
               </Button>
@@ -168,6 +177,7 @@ export function WriteOffActions({
       >
         <form action={reverseAction} className="space-y-4">
           <input type="hidden" name="writeOffId" value={writeOffId} />
+              <input type="hidden" name="context" value={context} />
           <Field label="Шалтгаан" htmlFor="reverse-note" hint="Заавал биш, гэхдээ аудитад үлдэнэ.">
             <Textarea id="reverse-note" name="note" rows={2} placeholder="Жишээ: буруу бүртгэсэн." />
           </Field>

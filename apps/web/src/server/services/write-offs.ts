@@ -3,7 +3,13 @@ import type { DocStatus, Prisma, WriteOffReason } from "@prisma/client";
 import { d, money, qty as toQty, sum, ZERO, type Dec } from "@/lib/decimal";
 import { prisma, type Tx } from "@/lib/prisma";
 import { writeAudit } from "@/lib/audit";
-import { reasonRequiresNote } from "@/lib/write-offs";
+import {
+  deriveWriteOffContext,
+  reasonRequiresNote,
+  WRITE_OFF_CONTEXT_LABEL,
+  type WriteOffContext,
+  type WriteOffDocumentContext,
+} from "@/lib/write-offs";
 import {
   applyMovement,
   lockStock,
@@ -59,6 +65,8 @@ export type WriteOffLineInput = {
 };
 
 export type WriteOffDraftInput = {
+  /** Аль хүрээний акт вэ — мөр бүр энэ хүрээнд тохирох ёстой. */
+  context: WriteOffContext;
   date: Date;
   reason: WriteOffReason;
   note?: string | null;
@@ -147,7 +155,7 @@ export async function createWriteOffDraft(
   return prisma.$transaction(async (tx) => {
     // Барааны эрхийг ноорог үедээ ч шалгана — үйлдвэрлэдэг бүтээгдэхүүн
     // нөөцийн субьект биш тул актад ерөөсөө орж болохгүй.
-    for (const line of lines) await assertEligible(tx, line.subject);
+    for (const line of lines) await assertEligible(tx, line.subject, input.context);
 
     const documentNo = await nextDocumentNumber(tx, "writeOff");
     const writeOff = await tx.inventoryWriteOff.create({
@@ -182,7 +190,12 @@ export async function createWriteOffDraft(
         action: "WRITE_OFF_CREATED",
         entityType: "InventoryWriteOff",
         entityId: writeOff.id,
-        newValue: { documentNo, reason: input.reason, itemCount: lines.length },
+        newValue: {
+          documentNo,
+          context: input.context,
+          reason: input.reason,
+          itemCount: lines.length,
+        },
         ipAddress: input.ipAddress,
       },
       tx,
@@ -195,6 +208,7 @@ export async function createWriteOffDraft(
 /** Ноорог актыг бүтнээр нь солих (мөр нэмэх / хасах / тоо, шалтгаан засах). */
 export async function updateWriteOffDraft(params: {
   writeOffId: string;
+  context: WriteOffContext;
   date: Date;
   reason: WriteOffReason;
   note?: string | null;
@@ -208,8 +222,11 @@ export async function updateWriteOffDraft(params: {
   await prisma.$transaction(async (tx) => {
     const existing = await lockWriteOff(tx, params.writeOffId);
     assertDraft(existing.status, "засварлах");
+    // Баримтын хүрээ засварлахад ӨӨРЧЛӨГДӨХГҮЙ — материалын актыг
+    // бүтээгдэхүүний маягтаар дамжуулж хөрвүүлэх боломжгүй.
+    assertContextMatches(existing.items, params.context);
 
-    for (const line of lines) await assertEligible(tx, line.subject);
+    for (const line of lines) await assertEligible(tx, line.subject, params.context);
 
     await tx.inventoryWriteOffItem.deleteMany({ where: { writeOffId: existing.id } });
 
@@ -240,6 +257,7 @@ export async function updateWriteOffDraft(params: {
         entityId: existing.id,
         newValue: {
           documentNo: existing.documentNo,
+          context: params.context,
           reason: params.reason,
           itemCount: lines.length,
         },
@@ -291,6 +309,26 @@ async function lockWriteOff(tx: Tx, writeOffId: string) {
   return writeOff;
 }
 
+/** Баримтын хүрээ хүсэлтийн хүрээтэй таарч байгаа эсэх. */
+function assertContextMatches(
+  items: { rawMaterialId: string | null; productId: string | null }[],
+  context: WriteOffContext,
+): void {
+  const actual = deriveWriteOffContext(items);
+  if (actual === "MIXED") {
+    throw new WriteOffStateError(
+      "Энэ нь хуучин холимог баримт тул засварлах боломжгүй. Түүхэнд хэвээр үлдэнэ.",
+    );
+  }
+  if (actual !== context) {
+    const actualLabel = actual === "RAW_MATERIAL" ? "бараа материалын" : "бүтээгдэхүүний";
+    const askedLabel = context === "RAW_MATERIAL" ? "бараа материалын" : "бүтээгдэхүүний";
+    throw new WriteOffStateError(
+      `Энэ бол ${actualLabel} акт. ${askedLabel} хэсгээс засварлах боломжгүй.`,
+    );
+  }
+}
+
 function assertDraft(status: DocStatus, verb: string): void {
   if (status !== "DRAFT") {
     throw new WriteOffStateError(
@@ -300,20 +338,46 @@ function assertDraft(status: DocStatus, verb: string): void {
 }
 
 /**
- * Нөөцийн субьект актад орох эрхтэй эсэх.
+ * Нөөцийн субьект ЭНЭ ХҮРЭЭНИЙ актад орох эрхтэй эсэх.
  *
- * Үйлдвэрлэдэг бүтээгдэхүүн өөрийн нөөцгүй (өртөг нь жорноос бодогддог,
- * материал нь борлуулалтын үед хасагддаг) тул актад ОРОХГҮЙ. lockStock мөн
- * үүнийг татгалздаг — энд урьдчилан ойлгомжтой алдаа өгөх зорилготой.
+ * Хоёр шалгалт:
+ *
+ *  1) Хүрээ таарах эсэх. Бараа материалын акт бүтээгдэхүүн хүлээж авахгүй,
+ *     бүтээгдэхүүний акт бараа материал хүлээж авахгүй. Энэ нь дэлгэцийн
+ *     шүүлтүүр биш — СЕРВЕР талын шалгалт тул нуугдсан талбар засаж
+ *     тойрох боломжгүй.
+ *
+ *  2) Бүтээгдэхүүн бол нөөцийн субьект мөн эсэх. Үйлдвэрлэдэг бүтээгдэхүүн
+ *     өөрийн нөөцгүй: түүний өртөг жорноос бодогддог, материал нь
+ *     борлуулалтын үед хасагддаг, дэвтэрт хэзээ ч мөр үүсгэдэггүй.
+ *     Тиймээс актад ОРОХГҮЙ. lockStock мөн үүнийг татгалздаг — энд
+ *     урьдчилан ойлгомжтой алдаа өгөх зорилготой.
  */
-async function assertEligible(tx: Tx, subject: StockSubject): Promise<void> {
+async function assertEligible(
+  tx: Tx,
+  subject: StockSubject,
+  context: WriteOffContext,
+): Promise<void> {
   if (subject.kind === "rawMaterial") {
+    if (context !== "RAW_MATERIAL") {
+      throw new WriteOffStateError(
+        "Бүтээгдэхүүний актад бараа материал оруулах боломжгүй. " +
+          "Бараа материалыг бараа материалын актаар хасна уу.",
+      );
+    }
     const material = await tx.rawMaterial.findUnique({
       where: { id: subject.id },
       select: { id: true },
     });
     if (!material) throw new WriteOffStateError("Бараа материал олдсонгүй.");
     return;
+  }
+
+  if (context !== "PRODUCT") {
+    throw new WriteOffStateError(
+      "Бараа материалын актад бүтээгдэхүүн оруулах боломжгүй. " +
+        "Бүтээгдэхүүнийг бүтээгдэхүүний актаар хасна уу.",
+    );
   }
   const product = await tx.product.findUnique({
     where: { id: subject.id },
@@ -323,7 +387,8 @@ async function assertEligible(tx: Tx, subject: StockSubject): Promise<void> {
   if (product.productType !== "RESALE") {
     throw new WriteOffStateError(
       `"${product.name}" нь үйлдвэрлэдэг бүтээгдэхүүн тул актаар хасах боломжгүй. ` +
-        "Түүний түүхий эдийг актад оруулна уу.",
+        "Үйлдвэрлэсэн бэлэн бүтээгдэхүүний нөөц систем дээр хараахан хөтлөгддөггүй — " +
+        "түүний түүхий эдийг бараа материалын актад оруулна уу.",
     );
   }
 }
@@ -434,9 +499,22 @@ async function postWriteOffTransaction(params: {
       subjectKey(subjectOfItem(a)).localeCompare(subjectKey(subjectOfItem(b))),
     );
 
+    // Баримтын өөрийн хүрээгээр дахин шалгана: ноорог үүссэнээс хойш бараа
+    // идэвхгүй болсон, эсвэл төрөл нь өөрчлөгдсөн байж болно.
+    const documentContext = deriveWriteOffContext(writeOff.items);
+
     for (const item of ordered) {
       const subject = subjectOfItem(item);
-      await assertEligible(tx, subject);
+      // Хуучин холимог баримт байвал мөр бүрийг өөрийнх нь хүрээгээр шалгана.
+      await assertEligible(
+        tx,
+        subject,
+        documentContext === "MIXED"
+          ? subject.kind === "rawMaterial"
+            ? "RAW_MATERIAL"
+            : "PRODUCT"
+          : documentContext,
+      );
 
       // lockStock нь SELECT ... FOR UPDATE хийнэ. Энэ мөчөөс хойш өөр
       // гүйлгээ энэ барааны үлдэгдлийг өөрчилж чадахгүй тул доорх шалгалт
@@ -645,7 +723,25 @@ export type WriteOffListFilters = {
   to?: Date | null;
   reason?: WriteOffReason | null;
   status?: DocStatus | null;
+  /** Хоосон бол бүх хүрээ (хуучин холимог баримт орно). */
+  context?: WriteOffContext | null;
 };
+
+/**
+ * Хүрээгээр шүүх нөхцөл.
+ *
+ * Тусдаа багана хадгалахгүй — баримтын мөрүүдээс шүүнэ. Ингэснээр нүүлгэлт
+ * шаардахгүй бөгөөд хуучин баримтууд ямар ч дүүргэлтгүйгээр зөв ангилагдана.
+ *
+ * `every` нь ХООСОН хамаарал дээр үнэн буцаадаг тул мөртэй эсэхийг `some`-оор
+ * баталгаажуулна. Холимог хуучин баримт аль ч хүрээнд ОРОХГҮЙ — тэдгээр нь
+ * шүүлтгүй жагсаалтад л харагдана.
+ */
+function contextWhere(context: WriteOffContext): Prisma.InventoryWriteOffWhereInput {
+  return context === "RAW_MATERIAL"
+    ? { items: { some: { rawMaterialId: { not: null } }, every: { productId: null } } }
+    : { items: { some: { productId: { not: null } }, every: { rawMaterialId: null } } };
+}
 
 function listWhere(filters: WriteOffListFilters): Prisma.InventoryWriteOffWhereInput {
   return {
@@ -659,24 +755,27 @@ function listWhere(filters: WriteOffListFilters): Prisma.InventoryWriteOffWhereI
       : {}),
     ...(filters.reason ? { reason: filters.reason } : {}),
     ...(filters.status ? { status: filters.status } : {}),
+    ...(filters.context ? contextWhere(filters.context) : {}),
   };
 }
 
 export async function listWriteOffs(filters: WriteOffListFilters = {}, take = 100) {
-  return prisma.inventoryWriteOff.findMany({
+  const rows = await prisma.inventoryWriteOff.findMany({
     where: listWhere(filters),
     orderBy: [{ date: "desc" }, { createdAt: "desc" }],
     take,
     include: {
       createdBy: { select: { name: true } },
       postedBy: { select: { name: true } },
+      items: { select: { rawMaterialId: true, productId: true } },
       _count: { select: { items: true } },
     },
   });
+  return rows.map((row) => ({ ...row, context: deriveWriteOffContext(row.items) }));
 }
 
 export async function getWriteOff(id: string) {
-  return prisma.inventoryWriteOff.findUnique({
+  const act = await prisma.inventoryWriteOff.findUnique({
     where: { id },
     include: {
       createdBy: { select: { name: true } },
@@ -685,6 +784,8 @@ export async function getWriteOff(id: string) {
       items: { include: ITEM_INCLUDE, orderBy: { id: "asc" } },
     },
   });
+  if (!act) return null;
+  return { ...act, context: deriveWriteOffContext(act.items) };
 }
 
 export type WriteOffCandidate = {
@@ -698,26 +799,26 @@ export type WriteOffCandidate = {
 };
 
 /**
- * Актад нэмж болох барааны жагсаалт: идэвхтэй түүхий эд ба идэвхтэй
- * БЭЛЭН (RESALE) бүтээгдэхүүн. Үйлдвэрлэдэг бүтээгдэхүүн ЭНД ОРОХГҮЙ —
- * тэдгээр нь өөрийн нөөцгүй.
+ * Тухайн ХҮРЭЭНД актад нэмж болох барааны жагсаалт.
+ *
+ *   RAW_MATERIAL — идэвхтэй бараа материал.
+ *   PRODUCT      — идэвхтэй БЭЛЭН (RESALE) бүтээгдэхүүн.
+ *
+ * Үйлдвэрлэдэг бүтээгдэхүүн ЭНД ХЭЗЭЭ Ч ОРОХГҮЙ: систем дээр тэдгээрийн
+ * бэлэн бүтээгдэхүүний нөөц хөтлөгддөггүй (дэвтэрт мөр үүсдэггүй, quantity
+ * нь 0 хэвээр). Тэднийг сонголтод оруулах нь байхгүй нөөцийг байгаа мэт
+ * харуулах болно.
  */
-export async function listWriteOffCandidates(): Promise<WriteOffCandidate[]> {
-  const [materials, products] = await Promise.all([
-    prisma.rawMaterial.findMany({
+export async function listWriteOffCandidates(
+  context: WriteOffContext,
+): Promise<WriteOffCandidate[]> {
+  if (context === "RAW_MATERIAL") {
+    const materials = await prisma.rawMaterial.findMany({
       where: { isActive: true },
       select: { id: true, sku: true, name: true, unit: true, quantity: true, averageCost: true },
       orderBy: { name: "asc" },
-    }),
-    prisma.product.findMany({
-      where: { isActive: true, productType: "RESALE" },
-      select: { id: true, sku: true, name: true, unit: true, quantity: true, averageCost: true },
-      orderBy: { name: "asc" },
-    }),
-  ]);
-
-  return [
-    ...materials.map((m) => ({
+    });
+    return materials.map((m) => ({
       kind: "rawMaterial" as const,
       id: m.id,
       sku: m.sku,
@@ -725,17 +826,23 @@ export async function listWriteOffCandidates(): Promise<WriteOffCandidate[]> {
       unit: m.unit,
       quantity: d(m.quantity).toFixed(3),
       averageCost: d(m.averageCost).toFixed(4),
-    })),
-    ...products.map((p) => ({
-      kind: "product" as const,
-      id: p.id,
-      sku: p.sku,
-      name: p.name,
-      unit: p.unit,
-      quantity: d(p.quantity).toFixed(3),
-      averageCost: d(p.averageCost).toFixed(4),
-    })),
-  ];
+    }));
+  }
+
+  const products = await prisma.product.findMany({
+    where: { isActive: true, productType: "RESALE" },
+    select: { id: true, sku: true, name: true, unit: true, quantity: true, averageCost: true },
+    orderBy: { name: "asc" },
+  });
+  return products.map((p) => ({
+    kind: "product" as const,
+    id: p.id,
+    sku: p.sku,
+    name: p.name,
+    unit: p.unit,
+    quantity: d(p.quantity).toFixed(3),
+    averageCost: d(p.averageCost).toFixed(4),
+  }));
 }
 
 // ---------------------------------------------------------------------------
@@ -760,9 +867,13 @@ export type WriteOffReport = {
  * ЗӨВХӨН батлагдсан (POSTED) актыг тооцно. Буцаагдсан акт нь бодит хорогдол
  * биш тул дүнд ОРОХГҮЙ — гэхдээ түүх нь жагсаалтад хэвээр харагдана.
  */
-export async function writeOffReport(range: { from: Date; to: Date }): Promise<WriteOffReport> {
+export async function writeOffReport(
+  range: { from: Date; to: Date },
+  context?: WriteOffContext | null,
+): Promise<WriteOffReport> {
   const where: Prisma.InventoryWriteOffWhereInput = {
     date: { gte: range.from, lte: range.to },
+    ...(context ? contextWhere(context) : {}),
   };
 
   const [posted, reversedCount] = await Promise.all([
