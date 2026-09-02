@@ -5,7 +5,11 @@ import { Plus, Trash2 } from "lucide-react";
 import { Alert } from "@/components/ui/Alert";
 import { Badge } from "@/components/ui/Badge";
 import { Button, SubmitButton } from "@/components/ui/Button";
-import { Field, Input, Select } from "@/components/ui/Field";
+import { Field, Input } from "@/components/ui/Field";
+import {
+  SearchableCombobox,
+  type ComboboxOption,
+} from "@/components/ui/SearchableCombobox";
 import { Modal, ModalActions } from "@/components/ui/Modal";
 import { EmptyRow, Table, TableLink, Td, Th, Tr } from "@/components/ui/Table";
 import { IDLE, type ActionState } from "@/lib/action-state";
@@ -167,23 +171,25 @@ function AddItemForm({
   onDone: () => void;
 }) {
   const [state, formAction] = useActionState<ActionState, FormData>(addSupplierItemAction, IDLE);
-  const [query, setQuery] = useState("");
   const [selected, setSelected] = useState("");
 
   useEffect(() => {
     if (state.status === "success") onDone();
   }, [state, onDone]);
 
-  const filtered = useMemo(() => {
-    const q = query.trim().toLowerCase();
-    if (!q) return eligible;
-    return eligible.filter(
-      (item) => item.name.toLowerCase().includes(q) || item.sku.toLowerCase().includes(q),
-    );
-  }, [eligible, query]);
-
-  const materials = filtered.filter((i) => i.kind === "rawMaterial");
-  const products = filtered.filter((i) => i.kind === "product");
+  // Сонгох боломжтой барааны хүрээ ӨӨРЧЛӨГДӨӨГҮЙ — `eligible` нь өмнөх
+  // шигээ сервер талаас ирнэ. Зөвхөн сонгох арга нь хайлттай боллоо.
+  const options: ComboboxOption[] = useMemo(
+    () =>
+      eligible.map((item) => ({
+        value: item.key,
+        label: item.name,
+        secondary: item.sku,
+        group: item.kind === "rawMaterial" ? "Түүхий эд" : "Бэлэн бүтээгдэхүүн",
+        badge: item.kind === "rawMaterial" ? "Түүхий эд" : "Бэлэн бүтээгдэхүүн",
+      })),
+    [eligible],
+  );
 
   return (
     <form action={formAction} className="space-y-4">
@@ -192,49 +198,19 @@ function AddItemForm({
         <Alert tone="error">{state.message}</Alert>
       ) : null}
 
-      <Field label="Хайх" htmlFor="item-search">
-        <Input
-          id="item-search"
-          value={query}
-          onChange={(event) => setQuery(event.target.value)}
-          placeholder="Нэр эсвэл код"
-        />
-      </Field>
-
       <Field label="Бараа" htmlFor="itemKey" required>
-        <Select
+        <SearchableCombobox
           id="itemKey"
           name="itemKey"
           required
           value={selected}
-          onChange={(event) => setSelected(event.target.value)}
-          size={Math.min(10, Math.max(4, filtered.length + 2))}
-        >
-          <option value="">— Сонгох —</option>
-          {materials.length > 0 ? (
-            <optgroup label="Түүхий эд">
-              {materials.map((item) => (
-                <option key={item.key} value={item.key}>
-                  {item.name} ({item.sku})
-                </option>
-              ))}
-            </optgroup>
-          ) : null}
-          {products.length > 0 ? (
-            <optgroup label="Бэлэн бүтээгдэхүүн">
-              {products.map((item) => (
-                <option key={item.key} value={item.key}>
-                  {item.name} ({item.sku})
-                </option>
-              ))}
-            </optgroup>
-          ) : null}
-        </Select>
+          onChange={setSelected}
+          options={options}
+          placeholder="Бараа хайх эсвэл сонгох..."
+          searchPlaceholder="Нэр эсвэл код..."
+          emptyMessage="Хайлтад тохирох бараа алга байна."
+        />
       </Field>
-
-      {filtered.length === 0 ? (
-        <p className="text-[13px] text-ink-500">Хайлтад тохирох бараа алга байна.</p>
-      ) : null}
 
       <ModalActions>
         <Button variant="secondary" onClick={onDone}>

@@ -6,6 +6,7 @@ import { Plus, Trash2 } from "lucide-react";
 import { Alert } from "@/components/ui/Alert";
 import { Button, SubmitButton } from "@/components/ui/Button";
 import { NumberInput, Select } from "@/components/ui/Field";
+import { SearchableCombobox, type ComboboxOption } from "@/components/ui/SearchableCombobox";
 import { Table, Td, Th, Tr } from "@/components/ui/Table";
 import { IDLE, type ActionState } from "@/lib/action-state";
 import { formatMoney, formatMoneyPrecise } from "@/lib/format";
@@ -49,6 +50,17 @@ export function RecipeEditor({
   );
   const [state, formAction] = useActionState<ActionState, FormData>(saveRecipeAction, IDLE);
 
+  // Сонгох боломжтой түүхий эдийн хүрээ ХЭВЭЭР — `materials` prop өөрчлөгдөөгүй.
+  const materialOptions: ComboboxOption[] = useMemo(
+    () =>
+      materials.map((option) => ({
+        value: option.id,
+        label: option.name,
+        secondary: option.sku,
+      })),
+    [materials],
+  );
+
   const byId = useMemo(() => new Map(materials.map((m) => [m.id, m])), [materials]);
   const totalCost = rows.reduce((acc, row) => acc + lineCost(row, byId.get(row.rawMaterialId)), 0);
   const profit = sellingPrice - totalCost;
@@ -89,18 +101,15 @@ export function RecipeEditor({
             return (
               <Tr key={index}>
                 <Td>
-                  <Select
+                  <SearchableCombobox
                     name={`items[${index}][rawMaterialId]`}
                     value={row.rawMaterialId}
-                    onChange={(event) => onMaterialChange(index, event.target.value)}
-                  >
-                    <option value="">— Сонгох —</option>
-                    {materials.map((option) => (
-                      <option key={option.id} value={option.id}>
-                        {option.name} ({option.sku})
-                      </option>
-                    ))}
-                  </Select>
+                    onChange={(next) => onMaterialChange(index, next)}
+                    options={materialOptions}
+                    placeholder="Түүхий эд хайх эсвэл сонгох..."
+                    searchPlaceholder="Нэр эсвэл код..."
+                    emptyMessage="Түүхий эд олдсонгүй."
+                  />
                 </Td>
                 <Td align="right">
                   <NumberInput
