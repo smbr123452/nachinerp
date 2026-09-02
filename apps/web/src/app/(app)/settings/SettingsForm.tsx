@@ -25,7 +25,7 @@ export function SettingsForm({
         <Input id="companyName" name="companyName" defaultValue={companyName} required />
       </Field>
 
-      <div className="rounded-lg border border-ink-200 p-4">
+      <div className="rounded-lg bg-ink-50 p-4">
         <Checkbox
           label="Нөөц хүрэлцэхгүй үед борлуулалт баталгаажуулахыг зөвшөөрөх"
           name="allowNegativeStock"

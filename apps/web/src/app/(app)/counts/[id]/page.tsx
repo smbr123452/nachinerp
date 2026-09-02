@@ -84,7 +84,7 @@ export default async function CountDetailPage({ params }: { params: Params }) {
         <CountSheet countId={count.id} rows={rows} />
       ) : (
         <>
-          <div className="mb-6 grid gap-4 sm:grid-cols-3">
+          <div className="mb-4 grid gap-3 sm:grid-cols-3">
             <StatCard label="Тоолсон нэр төрөл" value={count.items.length} />
             <StatCard label="Зөрүүтэй мөр" value={diffCount} tone={diffCount > 0 ? "warning" : "default"} />
             <StatCard

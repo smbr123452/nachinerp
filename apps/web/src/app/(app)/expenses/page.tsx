@@ -63,7 +63,7 @@ export default async function ExpensesPage({ searchParams }: { searchParams: Sea
         }
       />
 
-      <div className="mb-6 grid gap-4 sm:grid-cols-2">
+      <div className="mb-4 grid gap-3 sm:grid-cols-2">
         <StatCard label="Энэ сарын зардал" value={formatMoney(monthAggregate._sum.amount ?? 0)} />
         <StatCard label="Шүүлтэд харагдаж буй дүн" value={formatMoney(listedTotal)} />
       </div>
@@ -86,7 +86,7 @@ export default async function ExpensesPage({ searchParams }: { searchParams: Sea
         />
       </FilterBar>
 
-      <Card className="mb-6">
+      <Card className="mb-4">
         <Table>
           <thead>
             <tr>
@@ -136,6 +136,7 @@ export default async function ExpensesPage({ searchParams }: { searchParams: Sea
                         action={cancelExpenseAction}
                         title="Зардал цуцлах"
                         description="Мөнгөн гүйлгээ буцаагдаж, бичлэг түүхэнд үлдэнэ."
+                        variant="ghost"
                       />
                     ) : (
                       <span className="text-xs text-ink-400">{expense.cancelNote ?? "-"}</span>

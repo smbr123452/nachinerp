@@ -20,7 +20,7 @@ import { DonutChart } from "@/components/ui/DonutChart";
 import { GroupedBarChart } from "@/components/ui/GroupedBarChart";
 import { HorizontalBarChart } from "@/components/ui/HorizontalBarChart";
 import { LineChart } from "@/components/ui/LineChart";
-import { StatCard } from "@/components/ui/StatCard";
+import { StatCard, StatGrid } from "@/components/ui/StatCard";
 import { EmptyRow, Table, TableLink, Td, Th, Tr } from "@/components/ui/Table";
 import { Tabs } from "@/components/ui/Tabs";
 import { formatDateTime, formatMoney, formatPercent, formatQty } from "@/lib/format";
@@ -127,7 +127,7 @@ export async function OwnerDashboard({
       />
 
       {/* Гол санхүүгийн үзүүлэлт */}
-      <section className="mb-3 grid auto-rows-fr gap-3 sm:grid-cols-2 xl:grid-cols-4">
+      <StatGrid className="mb-3">
         <StatCard
           emphasis
           label="Өнөөдрийн борлуулалт"
@@ -160,9 +160,9 @@ export async function OwnerDashboard({
           tone="brand"
           hint={data.kpi.monthGrossMargin ? "Энэ сарын дундаж" : "Борлуулалт бүртгэгдээгүй"}
         />
-      </section>
+      </StatGrid>
 
-      <section className="mb-6 grid auto-rows-fr gap-3 sm:grid-cols-2 xl:grid-cols-4">
+      <StatGrid className="mb-4">
         <StatCard
           label="Энэ сарын ББӨ"
           value={formatMoney(data.kpi.monthCogs)}
@@ -183,14 +183,14 @@ export async function OwnerDashboard({
           hint="Жигнэсэн дундаж өртгөөр"
           icon={<Warehouse />}
         />
-      </section>
+      </StatGrid>
 
       {/* Нийлүүлэгчийн өглөг — зөвхөн эзэн. Өглөг байхгүй бол огт харагдахгүй. */}
       <PayablesTiles />
 
       {/* Анхаарах зүйлс */}
       {data.alerts.length > 0 ? (
-        <Card className="mb-6">
+        <Card className="mb-4">
           <CardHeader title="Анхаарах зүйлс" description="Одоо биелж буй нөхцөлүүд" />
           <CardBody>
             <AlertList alerts={data.alerts} empty="Анхаарах зүйл алга." />
@@ -217,7 +217,7 @@ export async function OwnerDashboard({
         </CardBody>
       </Card>
 
-      <div className="mb-4 grid items-start gap-4 xl:grid-cols-3">
+      <div className="mb-4 grid items-start gap-3 xl:grid-cols-3">
         <Card className="xl:col-span-2">
           <CardHeader
             title="Орлого ба зардал"
@@ -259,7 +259,7 @@ export async function OwnerDashboard({
         </Card>
       </div>
 
-      <div className="mb-4 grid items-start gap-4 xl:grid-cols-2">
+      <div className="mb-4 grid items-start gap-3 xl:grid-cols-2">
         <Card>
           <CardHeader
             title="Шилдэг бүтээгдэхүүн"
@@ -415,35 +415,39 @@ export async function OwnerDashboard({
           title="Бараа материалын төлөв"
           action={<MoreLink href="/materials?status=low" />}
         />
-        <CardBody className="border-b border-ink-200">
-          <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-            <StatCard
-              label="Нөөц багассан"
-              value={`${data.inventory.lowStockCount} нэр`}
-              tone={data.inventory.lowStockCount > 0 ? "warning" : "default"}
-              icon={<PackageX />}
-            />
-            <StatCard
-              label="Нөөц дууссан"
-              value={`${data.inventory.outOfStockCount} нэр`}
-              tone={data.inventory.outOfStockCount > 0 ? "negative" : "default"}
-              icon={<PackageX />}
-            />
-            <StatCard
-              label="Нөөцийн нийт өртөг"
-              value={formatMoney(data.inventory.totalValue)}
-              icon={<Warehouse />}
-            />
-            <StatCard
-              label="Сүүлийн тооллогын зөрүү"
-              value={data.lastCount ? formatMoney(data.lastCount.totalVariance) : "—"}
-              tone={
-                data.lastCount && data.lastCount.totalVariance.isNegative() ? "negative" : "default"
-              }
-              hint={data.lastCount ? data.lastCount.countNo : "Тооллого хийгдээгүй"}
-              icon={<ScaleIcon />}
-            />
-          </div>
+        {/* Хайрцаг дотор хайрцаг үүсгэхгүй: үзүүлэлтүүд хүрээгүйгээр
+            шууд энэ хайрцгийн дотор эгнэнэ. */}
+        <CardBody className="grid gap-x-6 gap-y-4 border-b border-ink-200 sm:grid-cols-2 xl:grid-cols-4">
+          <StatCard
+            variant="flat"
+            label="Нөөц багассан"
+            value={`${data.inventory.lowStockCount} нэр`}
+            tone={data.inventory.lowStockCount > 0 ? "warning" : "default"}
+            icon={<PackageX />}
+          />
+          <StatCard
+            variant="flat"
+            label="Нөөц дууссан"
+            value={`${data.inventory.outOfStockCount} нэр`}
+            tone={data.inventory.outOfStockCount > 0 ? "negative" : "default"}
+            icon={<PackageX />}
+          />
+          <StatCard
+            variant="flat"
+            label="Нөөцийн нийт өртөг"
+            value={formatMoney(data.inventory.totalValue)}
+            icon={<Warehouse />}
+          />
+          <StatCard
+            variant="flat"
+            label="Сүүлийн тооллогын зөрүү"
+            value={data.lastCount ? formatMoney(data.lastCount.totalVariance) : "—"}
+            tone={
+              data.lastCount && data.lastCount.totalVariance.isNegative() ? "negative" : "default"
+            }
+            hint={data.lastCount ? data.lastCount.countNo : "Тооллого хийгдээгүй"}
+            icon={<ScaleIcon />}
+          />
         </CardBody>
 
         <div className="grid xl:grid-cols-2 xl:divide-x xl:divide-ink-200">
@@ -553,7 +557,7 @@ export async function OwnerDashboard({
         </div>
       </Card>
 
-      <div className="grid items-start gap-4 xl:grid-cols-3">
+      <div className="grid items-start gap-3 xl:grid-cols-3">
         {/* Үнэ өссөн түүхий эд — 2-оос дээш удаа авсан материал л энд орно */}
         {data.priceMovements.length > 0 ? (
           <Card>

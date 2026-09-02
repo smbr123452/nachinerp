@@ -6,7 +6,8 @@ import { Alert } from "@/components/ui/Alert";
 import { ActiveBadge } from "@/components/ui/Badge";
 import { Button, SubmitButton } from "@/components/ui/Button";
 import { Field, Input } from "@/components/ui/Field";
-import { Modal, ModalActions } from "@/components/ui/Modal";
+import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
+import { Modal } from "@/components/ui/Modal";
 import { IDLE, type ActionState } from "@/lib/action-state";
 import {
   createCategoryAction,
@@ -225,7 +226,7 @@ function CategoryLine({
                       : "Бүр мөсөн устгах"
                   }
                   onClick={() => setConfirming(true)}
-                  className={inUse ? undefined : "text-red-600 hover:bg-red-50 hover:text-red-700"}
+                  className={inUse ? undefined : "text-ink-500 hover:bg-red-50 hover:text-red-700"}
                 >
                   Устгах
                 </Button>
@@ -241,29 +242,18 @@ function CategoryLine({
         </Alert>
       ) : null}
 
-      <Modal
+      <ConfirmDialog
         open={confirming}
         onClose={() => setConfirming(false)}
         title="Ангилал бүр мөсөн устгах"
         description={`"${category.name}" ангиллыг устгах уу? Энэ үйлдлийг буцаах боломжгүй.`}
-        tone="danger"
-      >
-        <form
-          action={(formData) => {
-            setConfirming(false);
-            deleteAction(formData);
-          }}
-        >
-          <input type="hidden" name="kind" value={kind} />
-          <input type="hidden" name="id" value={category.id} />
-          <ModalActions>
-            <Button variant="secondary" onClick={() => setConfirming(false)}>
-              Болих
-            </Button>
-            <SubmitButton variant="danger">Устгах</SubmitButton>
-          </ModalActions>
-        </form>
-      </Modal>
+        confirmLabel="Устгах"
+        hiddenFields={{ kind, id: category.id }}
+        action={(formData) => {
+          setConfirming(false);
+          deleteAction(formData);
+        }}
+      />
     </div>
   );
 }

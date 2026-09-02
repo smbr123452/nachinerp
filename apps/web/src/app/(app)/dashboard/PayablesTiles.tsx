@@ -2,7 +2,7 @@ import Link from "next/link";
 import { CalendarClock, HandCoins, TriangleAlert } from "lucide-react";
 import { Badge } from "@/components/ui/Badge";
 import { Card, CardHeader } from "@/components/ui/Card";
-import { StatCard } from "@/components/ui/StatCard";
+import { StatCard, StatGrid } from "@/components/ui/StatCard";
 import { EmptyRow, Table, TableLink, Td, Th, Tr } from "@/components/ui/Table";
 import { formatDate, formatMoney } from "@/lib/format";
 import { PAYABLE_STATUS_LABEL, PAYABLE_STATUS_TONE } from "@/lib/payables";
@@ -26,7 +26,7 @@ export async function PayablesTiles() {
 
   return (
     <>
-      <section className="mb-3 grid auto-rows-fr gap-3 sm:grid-cols-2 xl:grid-cols-3">
+      <StatGrid className="mb-3" columns={3}>
         <StatCard
           label="Нийт өглөг"
           value={formatMoney(totals.totalOutstanding)}
@@ -47,9 +47,9 @@ export async function PayablesTiles() {
           hint={`${totals.dueSoonCount} өглөг`}
           icon={<CalendarClock />}
         />
-      </section>
+      </StatGrid>
 
-      <Card className="mb-6">
+      <Card className="mb-4">
         <CardHeader
           title="Ойрын төлөлтүүд"
           description="Хугацаа хэтэрсэн нь эхэлж харагдана."

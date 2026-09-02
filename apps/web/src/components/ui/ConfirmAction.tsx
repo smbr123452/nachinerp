@@ -1,11 +1,10 @@
 "use client";
 
 import { useActionState, useState } from "react";
-import { AlertTriangle } from "lucide-react";
 import { Alert } from "./Alert";
-import { Button, SubmitButton } from "./Button";
+import { Button } from "./Button";
+import { ConfirmDialog } from "./ConfirmDialog";
 import { Field, Textarea } from "./Field";
-import { Modal, ModalActions } from "./Modal";
 import { IDLE, type ActionState } from "@/lib/action-state";
 
 /**
@@ -19,6 +18,7 @@ export function CancelDocumentButton({
   description = "Энэ баримт устахгүй. Цуцлалтын бичилт үүсч, нөөц болон мөнгөний хөдөлгөөн буцаагдана.",
   buttonLabel = "Цуцлах",
   size = "sm",
+  variant = "danger",
 }: {
   id: string;
   action: (prev: ActionState, formData: FormData) => Promise<ActionState>;
@@ -26,51 +26,49 @@ export function CancelDocumentButton({
   description?: string;
   buttonLabel?: string;
   size?: "sm" | "md";
+  /**
+   * danger — хуудасны гол устгах/цуцлах үйлдэл (баримтын дэлгэрэнгүй).
+   * ghost — хүснэгтийн мөр бүрд давтагдах үйлдэл: улаан товч мөр болж
+   * эгнэвэл хуудасны хамгийн тод элемент нь цуцлалт болно.
+   */
+  variant?: "danger" | "ghost";
 }) {
   const [open, setOpen] = useState(false);
   const [state, formAction] = useActionState<ActionState, FormData>(action, IDLE);
 
   return (
     <>
-      <Button variant="danger" size={size} onClick={() => setOpen(true)}>
+      <Button
+        variant={variant}
+        size={size}
+        onClick={() => setOpen(true)}
+        className={variant === "ghost" ? "text-ink-500 hover:bg-red-50 hover:text-red-700" : undefined}
+      >
         {buttonLabel}
       </Button>
 
-      <Modal
+      <ConfirmDialog
         open={open}
         onClose={() => setOpen(false)}
         title={title}
         description={description}
-        tone="danger"
+        confirmLabel="Цуцлахыг баталгаажуулах"
+        pendingLabel="Цуцалж байна..."
+        hiddenFields={{ id }}
+        action={formAction}
       >
-        <form action={formAction} className="space-y-4">
-          <input type="hidden" name="id" value={id} />
+        {state.status === "error" && state.message ? (
+          <Alert tone="error">{state.message}</Alert>
+        ) : null}
 
-          {state.status === "error" && state.message ? (
-            <Alert tone="error">{state.message}</Alert>
-          ) : (
-            <Alert tone="warning" icon={false}>
-              <span className="flex items-start gap-2">
-                <AlertTriangle aria-hidden className="mt-0.5 h-4 w-4 shrink-0 text-amber-600" />
-                Энэ үйлдлийг буцаах боломжгүй. Шалтгаан нь аудитын түүхэд хадгалагдана.
-              </span>
-            </Alert>
-          )}
+        <Field label="Шалтгаан" htmlFor="cancel-note" required error={state.fieldErrors?.note}>
+          <Textarea id="cancel-note" name="note" required placeholder="Жишээ: буруу бүртгэсэн" />
+        </Field>
 
-          <Field label="Шалтгаан" htmlFor="cancel-note" required error={state.fieldErrors?.note}>
-            <Textarea id="cancel-note" name="note" required placeholder="Жишээ: буруу бүртгэсэн" />
-          </Field>
-
-          <ModalActions>
-            <Button variant="secondary" onClick={() => setOpen(false)}>
-              Болих
-            </Button>
-            <SubmitButton variant="danger" pendingText="Цуцалж байна...">
-              Цуцлахыг баталгаажуулах
-            </SubmitButton>
-          </ModalActions>
-        </form>
-      </Modal>
+        <p className="text-xs leading-5 text-ink-500">
+          Энэ үйлдлийг буцаах боломжгүй. Шалтгаан нь аудитын түүхэд хадгалагдана.
+        </p>
+      </ConfirmDialog>
     </>
   );
 }

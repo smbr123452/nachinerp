@@ -30,6 +30,7 @@ export function StatCard({
   icon,
   tone = "default",
   emphasis = false,
+  variant = "card",
   className,
 }: {
   label: string;
@@ -38,13 +39,20 @@ export function StatCard({
   icon?: ReactNode;
   tone?: Tone;
   emphasis?: boolean;
+  /**
+   * flat — хайрцаг дотор байрлах үзүүлэлт. Хүрээ, сүүдэргүй тул "хайрцаг
+   * дотор хайрцаг" мэдрэмж үүсэхгүй.
+   */
+  variant?: "card" | "flat";
   className?: string;
 }) {
   return (
     <div
       className={cn(
-        "flex min-w-0 flex-col rounded-card border bg-white p-4 shadow-card",
-        emphasis ? "border-brand-200 ring-1 ring-brand-100" : "border-ink-200",
+        "flex min-w-0 flex-col",
+        variant === "card" && "rounded-card border bg-white p-4 shadow-card",
+        variant === "card" &&
+          (emphasis ? "border-brand-200 ring-1 ring-brand-100" : "border-ink-200"),
         className,
       )}
     >

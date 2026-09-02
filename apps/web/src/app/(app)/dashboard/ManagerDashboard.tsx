@@ -14,7 +14,7 @@ import { PageHeader } from "@/components/layout/PageHeader";
 import { BarChart } from "@/components/ui/BarChart";
 import { Badge } from "@/components/ui/Badge";
 import { Card, CardBody, CardHeader } from "@/components/ui/Card";
-import { StatCard } from "@/components/ui/StatCard";
+import { StatCard, StatGrid } from "@/components/ui/StatCard";
 import { EmptyRow, Table, TableLink, Td, Th, Tr } from "@/components/ui/Table";
 import { formatDate, formatMoney, formatQty } from "@/lib/format";
 import { getManagerDashboard } from "@/server/services/dashboard";
@@ -54,7 +54,7 @@ export async function ManagerDashboard({ userName }: { userName: string }) {
       <PageHeader title={`Сайн байна уу, ${userName.split(" ")[0]}`} description={today} />
 
       {/* Хурдан үйлдлүүд — өдөр тутмын ажил эндээс эхэлнэ */}
-      <div className="no-print mb-5 flex flex-wrap gap-2">
+      <div className="no-print mb-4 flex flex-wrap gap-2">
         {QUICK_ACTIONS.map((action) => (
           <Link
             key={action.href}
@@ -76,7 +76,7 @@ export async function ManagerDashboard({ userName }: { userName: string }) {
       </div>
 
       {/* Өдрийн үйл ажиллагааны үзүүлэлт */}
-      <section className="mb-6 grid auto-rows-fr gap-3 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-6">
+      <StatGrid className="mb-4 xl:grid-cols-3 2xl:grid-cols-6" columns={3}>
         <StatCard
           label="Өнөөдрийн борлуулалт"
           value={formatMoney(data.kpi.todaySales)}
@@ -112,9 +112,9 @@ export async function ManagerDashboard({ userName }: { userName: string }) {
           hint={data.kpi.outOfStockCount > 0 ? `${data.kpi.outOfStockCount} нь нөөцгүй` : undefined}
           icon={<PackageX />}
         />
-      </section>
+      </StatGrid>
 
-      <div className="grid items-start gap-4 xl:grid-cols-3">
+      <div className="grid items-start gap-3 xl:grid-cols-3">
         <Card className="xl:col-span-2">
           <CardHeader
             title="Сүүлийн 7 хоногийн борлуулалт"

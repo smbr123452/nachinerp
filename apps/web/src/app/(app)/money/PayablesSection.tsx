@@ -71,7 +71,7 @@ export async function PayablesSection({
 
   return (
     <>
-      <section className="mb-6 grid auto-rows-fr gap-3 sm:grid-cols-2 xl:grid-cols-4">
+      <section className="mb-4 grid auto-rows-fr gap-3 sm:grid-cols-2 xl:grid-cols-4">
         <StatCard
           label="Нийт өглөг"
           value={formatMoney(totals.totalOutstanding)}
@@ -122,7 +122,7 @@ export async function PayablesSection({
         <DateFilter paramKey="pdueTo" label="Төлөх хугацаа: төгсгөл" />
       </FilterBar>
 
-      <Card className="mb-6">
+      <Card className="mb-4">
         <CardHeader
           title="Нийлүүлэгчийн өглөг"
           description="Зээлээр авсан худалдан авалтууд. Төлбөрийг худалдан авалтын хуудаснаас бүртгэнэ."

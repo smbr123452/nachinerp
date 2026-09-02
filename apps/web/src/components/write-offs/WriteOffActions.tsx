@@ -7,7 +7,7 @@ import { Alert } from "@/components/ui/Alert";
 import { Button } from "@/components/ui/Button";
 import { Card, CardBody, CardHeader } from "@/components/ui/Card";
 import { Field, Textarea } from "@/components/ui/Field";
-import { Modal } from "@/components/ui/Modal";
+import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { IDLE, type ActionState } from "@/lib/action-state";
 import type { WriteOffContext } from "@/lib/write-offs";
 import {
@@ -168,34 +168,22 @@ export function WriteOffActions({
         </CardBody>
       </Card>
 
-      <Modal
+      <ConfirmDialog
         open={reverseOpen}
         onClose={() => setReverseOpen(false)}
         title="АКТ буцаах"
-        tone="danger"
         description={`${documentNo} — хасагдсан бараа нөөцөд эх өртгөөрөө буцаж орно.`}
+        confirmLabel="Буцаахыг батлах"
+        pendingLabel="Буцааж байна..."
+        cancelLabel="Буцах"
+        disabled={reversing}
+        hiddenFields={{ writeOffId, context }}
+        action={reverseAction}
       >
-        <form action={reverseAction} className="space-y-4">
-          <input type="hidden" name="writeOffId" value={writeOffId} />
-              <input type="hidden" name="context" value={context} />
-          <Field label="Шалтгаан" htmlFor="reverse-note" hint="Заавал биш, гэхдээ аудитад үлдэнэ.">
-            <Textarea id="reverse-note" name="note" rows={2} placeholder="Жишээ: буруу бүртгэсэн." />
-          </Field>
-          <div className="flex justify-end gap-2">
-            <Button
-              type="button"
-              variant="secondary"
-              onClick={() => setReverseOpen(false)}
-              disabled={reversing}
-            >
-              Буцах
-            </Button>
-            <Button type="submit" variant="danger" disabled={reversing} loading={reversing}>
-              Буцаахыг батлах
-            </Button>
-          </div>
-        </form>
-      </Modal>
+        <Field label="Шалтгаан" htmlFor="reverse-note" hint="Заавал биш, гэхдээ аудитад үлдэнэ.">
+          <Textarea id="reverse-note" name="note" rows={2} placeholder="Жишээ: буруу бүртгэсэн." />
+        </Field>
+      </ConfirmDialog>
     </>
   );
 }

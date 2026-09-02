@@ -6,6 +6,7 @@ import { Badge } from "@/components/ui/Badge";
 import { Button, SubmitButton } from "@/components/ui/Button";
 import { Card, CardHeader } from "@/components/ui/Card";
 import { Field, FieldGrid, Input, NumberInput, Select, Textarea } from "@/components/ui/Field";
+import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { Modal, ModalActions } from "@/components/ui/Modal";
 import { Table, Td, Th, Tr } from "@/components/ui/Table";
 import { IDLE, type ActionState } from "@/lib/action-state";
@@ -157,7 +158,7 @@ export function PayablePanel({
                         variant="ghost"
                         size="sm"
                         onClick={() => setReverseId(payment.id)}
-                        className="text-red-700 hover:bg-red-50"
+                        className="text-ink-500 hover:bg-red-50 hover:text-red-700"
                       >
                         Буцаах
                       </Button>
@@ -327,34 +328,25 @@ function ReverseModal({
   }, [state]);
 
   return (
-    <Modal
+    <ConfirmDialog
       open={paymentId !== null}
       onClose={onClose}
       title="Төлбөр буцаах"
       description="Бичлэг устахгүй. Эсрэг мөнгөн гүйлгээ үүсч, өглөгийн үлдэгдэл сэргэнэ."
-      tone="danger"
+      confirmLabel="Буцаахыг баталгаажуулах"
+      pendingLabel="Буцааж байна..."
+      disabled={isPending}
+      hiddenFields={{ paymentId: paymentId ?? "" }}
+      action={formAction}
     >
-      <form action={formAction} className="space-y-4">
-        <input type="hidden" name="paymentId" value={paymentId ?? ""} />
+      {state.status === "error" && state.message ? (
+        <Alert tone="error">{state.message}</Alert>
+      ) : null}
 
-        {state.status === "error" && state.message ? (
-          <Alert tone="error">{state.message}</Alert>
-        ) : null}
-
-        <Field label="Шалтгаан" htmlFor="reverse-note" required error={state.fieldErrors?.note}>
-          <Textarea id="reverse-note" name="note" required placeholder="Жишээ: буруу бүртгэсэн" />
-        </Field>
-
-        <ModalActions>
-          <Button variant="secondary" onClick={onClose} disabled={isPending}>
-            Болих
-          </Button>
-          <SubmitButton variant="danger" pendingText="Буцааж байна...">
-            Буцаахыг баталгаажуулах
-          </SubmitButton>
-        </ModalActions>
-      </form>
-    </Modal>
+      <Field label="Шалтгаан" htmlFor="reverse-note" required error={state.fieldErrors?.note}>
+        <Textarea id="reverse-note" name="note" required placeholder="Жишээ: буруу бүртгэсэн" />
+      </Field>
+    </ConfirmDialog>
   );
 }
 
