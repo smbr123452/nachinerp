@@ -9,9 +9,14 @@ import { Field, FieldGrid, Input, NumberInput, Select, Textarea } from "@/compon
 import { IDLE, type ActionState } from "@/lib/action-state";
 import { formatMoney, formatQty } from "@/lib/format";
 import { unitLabel } from "@/lib/units";
-import { WRITE_OFF_REASON_LABEL, WRITE_OFF_REASONS } from "@/lib/write-offs";
+import {
+  WRITE_OFF_CONTEXT_LABEL,
+  WRITE_OFF_REASON_LABEL,
+  WRITE_OFF_REASONS,
+  type WriteOffContext,
+} from "@/lib/write-offs";
 import type { WriteOffCandidate } from "@/server/services/write-offs";
-import { createWriteOffAction } from "./actions";
+import { createWriteOffAction } from "@/app/(app)/write-off-actions";
 import { ConfirmWriteOffModal } from "./ConfirmWriteOffModal";
 
 type Row = { subject: string; quantity: string };
@@ -19,10 +24,13 @@ type Row = { subject: string; quantity: string };
 const EMPTY_ROW: Row = { subject: "", quantity: "" };
 
 export function WriteOffForm({
+  context,
   candidates,
   today,
   preselect,
 }: {
+  /** Маягт зөвхөн энэ хүрээний барааг харуулна. Сервер тал мөн шалгана. */
+  context: WriteOffContext;
   candidates: WriteOffCandidate[];
   today: string;
   /** Барааны хуудаснаас "АКТ" дарж ирэхэд урьдчилан сонгогдох бараа. */
@@ -81,6 +89,9 @@ export function WriteOffForm({
   return (
     <>
       <form action={formAction} className="space-y-4">
+        {/* Хүрээг сервер тал дахин шалгана — энэ талбар зөвхөн аль урсгалаас
+            ирснийг хэлнэ, өөрөө эрх нээхгүй. */}
+        <input type="hidden" name="context" value={context} />
         {state.status === "error" ? <Alert tone="error">{state.message}</Alert> : null}
 
         <Card>
@@ -127,7 +138,7 @@ export function WriteOffForm({
 
         <Card>
           <CardHeader
-            title="Бараа"
+            title={WRITE_OFF_CONTEXT_LABEL[context]}
             description="Хасах бараа бүрийн тоо хэмжээг оруулна. Өртөг нь батлах үеийн жигнэсэн дундаж өртгөөр тооцогдоно."
           />
           <CardBody className="space-y-3">

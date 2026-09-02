@@ -1,5 +1,8 @@
 import { Prisma } from "@prisma/client";
+import Link from "next/link";
+import { FileMinus2 } from "lucide-react";
 import { PageHeader } from "@/components/layout/PageHeader";
+import { Button } from "@/components/ui/Button";
 import { ActiveBadge, Badge } from "@/components/ui/Badge";
 import { Card } from "@/components/ui/Card";
 import { EmptyRow, MonoText, Table, TableLink, Td, Th, Tr } from "@/components/ui/Table";
@@ -63,6 +66,13 @@ export default async function ProductsPage({ searchParams }: { searchParams: Sea
         description={`Нийт ${products.length} бүтээгдэхүүн. Үйлдвэрлэдэг бүтээгдэхүүний өртөг жорноос, бэлэн бүтээгдэхүүнийх авалтын жигнэсэн дундаж өртгөөс бодогдоно.`}
         action={
           <>
+            {/* Бүтээгдэхүүний актын түүх — бараа материалынхаас тусдаа. */}
+            <Link href="/products/write-offs">
+              <Button variant="secondary" size="sm">
+                <FileMinus2 className="h-4 w-4" />
+                АКТ
+              </Button>
+            </Link>
             <CategoryManagerButton
               kind="product"
               categories={categoryRows}

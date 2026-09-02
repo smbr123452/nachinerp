@@ -9,7 +9,9 @@ import { readFile } from "node:fs/promises";
 import {
   createWriteOffDraft, updateWriteOffDraft, deleteWriteOffDraft,
   postWriteOff, reverseWriteOff, writeOffReport, listWriteOffCandidates,
+  listWriteOffs, getWriteOff,
 } from "../src/server/services/write-offs";
+import { deriveWriteOffContext } from "../src/lib/write-offs";
 import { postPurchase } from "../src/server/services/purchases";
 import { verifyLedgerConsistency } from "../src/server/services/inventory";
 
@@ -34,7 +36,7 @@ const wacOf = async (kind: "m" | "p", id: string) =>
 
 /** Буцаах action заавал requireOwner()-ээр хамгаалагдсан байх ёстой. */
 const OWNER_ONLY = [
-  { file: "src/app/(app)/materials/write-offs/actions.ts", fn: "reverseWriteOffAction" },
+  { file: "src/app/(app)/write-off-actions.ts", fn: "reverseWriteOffAction" },
 ];
 
 async function main() {
@@ -77,7 +79,7 @@ async function main() {
     // ---- 1-2. Ноорог үүсгэх — нөөцөд НӨЛӨӨЛӨХГҮЙ -------------------------
     const qtyBefore = await qtyOf("m", material.id);
     const draft = await createWriteOffDraft({
-      date: new Date(), reason: "EXPIRED", userId: owner.id,
+      context: "RAW_MATERIAL", date: new Date(), reason: "EXPIRED", userId: owner.id,
       lines: [{ rawMaterialId: material.id, quantity: 3 }],
     });
     actIds.push(draft.id);
@@ -111,7 +113,7 @@ async function main() {
     const resaleQtyBefore = await qtyOf("p", resale.id);
     const resaleWac = await wacOf("p", resale.id);
     const act2 = await createWriteOffDraft({
-      date: new Date(), reason: "DAMAGED", userId: owner.id,
+      context: "PRODUCT", date: new Date(), reason: "DAMAGED", userId: owner.id,
       lines: [{ productId: resale.id, quantity: 2 }],
     });
     actIds.push(act2.id);
@@ -120,23 +122,37 @@ async function main() {
       (await qtyOf("p", resale.id)).equals(resaleQtyBefore.minus(2)));
     check("4b. Түүний дундаж өртөг хэвээр", (await wacOf("p", resale.id)).equals(resaleWac));
 
-    // ---- 5. Холимог акт --------------------------------------------------
+    // ---- 5. Хүрээ тус бүр тусдаа акт үүсгэнэ ----------------------------
     const mQty = await qtyOf("m", material.id);
     const pQty = await qtyOf("p", resale.id);
+
+    // Нэг актад хоёр төрөл ХОЛИХ боломжгүй болсон.
+    const mixErr = await expectThrow(() =>
+      createWriteOffDraft({
+        context: "RAW_MATERIAL", date: new Date(), reason: "SPOILED", userId: owner.id,
+        lines: [
+          { rawMaterialId: material.id, quantity: 1 },
+          { productId: resale.id, quantity: 3 },
+        ],
+      }));
+    check("5. Холимог акт үүсгэх боломжгүй",
+      mixErr !== null && mixErr.includes("бүтээгдэхүүн оруулах боломжгүй"),
+      mixErr ?? "алдаа гараагүй");
+
     const act3 = await createWriteOffDraft({
-      date: new Date(), reason: "SPOILED", userId: owner.id,
-      lines: [
-        { rawMaterialId: material.id, quantity: 1 },
-        { productId: resale.id, quantity: 3 },
-      ],
+      context: "RAW_MATERIAL", date: new Date(), reason: "SPOILED", userId: owner.id,
+      lines: [{ rawMaterialId: material.id, quantity: 1 }],
     });
-    actIds.push(act3.id);
+    const act3p = await createWriteOffDraft({
+      context: "PRODUCT", date: new Date(), reason: "SPOILED", userId: owner.id,
+      lines: [{ productId: resale.id, quantity: 3 }],
+    });
+    actIds.push(act3.id, act3p.id);
     const posted3 = await postWriteOff({ writeOffId: act3.id, userId: owner.id });
-    check("5. Холимог акт хоёр барааг хасав",
+    await postWriteOff({ writeOffId: act3p.id, userId: owner.id });
+    check("5b. Тусдаа актууд хоёр барааг зөв хасав",
       (await qtyOf("m", material.id)).equals(mQty.minus(1)) &&
       (await qtyOf("p", resale.id)).equals(pQty.minus(3)));
-    check("5b. Хоёр хөдөлгөөн үүсэв",
-      (await prisma.inventoryMovement.count({ where: { referenceId: act3.id } })) === 2);
     const act3Items = await prisma.inventoryWriteOffItem.findMany({ where: { writeOffId: act3.id } });
     const act3Sum = act3Items.reduce((a, i) => a.plus(new D(i.totalCost)), new D(0));
     check("5c. Актын дүн = мөрүүдийн нийлбэр",
@@ -145,18 +161,18 @@ async function main() {
     // ---- 6. Үйлдвэрлэдэг бүтээгдэхүүн татгалзагдана ---------------------
     const manuErr = await expectThrow(() =>
       createWriteOffDraft({
-        date: new Date(), reason: "LOSS", userId: owner.id,
+        context: "PRODUCT", date: new Date(), reason: "LOSS", userId: owner.id,
         lines: [{ productId: manufactured.id, quantity: 1 }],
       }));
     check("6. Үйлдвэрлэдэг бүтээгдэхүүн татгалзагдав",
       manuErr !== null && manuErr.includes("үйлдвэрлэдэг"), manuErr ?? "алдаа гараагүй");
     check("6b. Сонголтын жагсаалтад ороогүй",
-      !(await listWriteOffCandidates()).some((c) => c.id === manufactured.id));
+      !(await listWriteOffCandidates("PRODUCT")).some((c) => c.id === manufactured.id));
 
     // ---- 7. Үлдэгдлээс их бол татгалзана --------------------------------
     const available = await qtyOf("m", material.id);
     const over = await createWriteOffDraft({
-      date: new Date(), reason: "LOSS", userId: owner.id,
+      context: "RAW_MATERIAL", date: new Date(), reason: "LOSS", userId: owner.id,
       lines: [{ rawMaterialId: material.id, quantity: available.plus(1).toString() }],
     });
     actIds.push(over.id);
@@ -171,13 +187,13 @@ async function main() {
     // ---- 9-10. Тэг ба сөрөг тоо -----------------------------------------
     const zeroErr = await expectThrow(() =>
       createWriteOffDraft({
-        date: new Date(), reason: "LOSS", userId: owner.id,
+        context: "RAW_MATERIAL", date: new Date(), reason: "LOSS", userId: owner.id,
         lines: [{ rawMaterialId: material.id, quantity: 0 }],
       }));
     check("9. Тэг тоо татгалзагдав", zeroErr !== null && zeroErr.includes("0-ээс их"));
     const negErr = await expectThrow(() =>
       createWriteOffDraft({
-        date: new Date(), reason: "LOSS", userId: owner.id,
+        context: "RAW_MATERIAL", date: new Date(), reason: "LOSS", userId: owner.id,
         lines: [{ rawMaterialId: material.id, quantity: -2 }],
       }));
     check("10. Сөрөг тоо татгалзагдав", negErr !== null && negErr.includes("0-ээс их"));
@@ -185,13 +201,13 @@ async function main() {
     // ---- 27. "Бусад" шалтгаанд тайлбар шаардана -------------------------
     const noteErr = await expectThrow(() =>
       createWriteOffDraft({
-        date: new Date(), reason: "OTHER", userId: owner.id,
+        context: "RAW_MATERIAL", date: new Date(), reason: "OTHER", userId: owner.id,
         lines: [{ rawMaterialId: material.id, quantity: 1 }],
       }));
     check("27. OTHER тайлбаргүй бол татгалзана",
       noteErr !== null && noteErr.includes("тайлбар"), noteErr ?? "алдаа гараагүй");
     const withNote = await createWriteOffDraft({
-      date: new Date(), reason: "OTHER", note: "Агуулахын үер", userId: owner.id,
+      context: "RAW_MATERIAL", date: new Date(), reason: "OTHER", note: "Агуулахын үер", userId: owner.id,
       lines: [{ rawMaterialId: material.id, quantity: 1 }],
     });
     actIds.push(withNote.id);
@@ -227,7 +243,7 @@ async function main() {
     });
     purchaseIds.push(exactBuy.id);
     const exactAct = await createWriteOffDraft({
-      date: new Date(), reason: "QUALITY_REJECTED", userId: owner.id,
+      context: "RAW_MATERIAL", date: new Date(), reason: "QUALITY_REJECTED", userId: owner.id,
       lines: [{ rawMaterialId: exactMaterial.id, quantity: 4 }],
     });
     actIds.push(exactAct.id);
@@ -237,7 +253,7 @@ async function main() {
 
     // ---- 14. Менежер үүсгэж, батална ------------------------------------
     const mgrAct = await createWriteOffDraft({
-      date: new Date(), reason: "SPILLED_BROKEN", userId: manager.id,
+      context: "RAW_MATERIAL", date: new Date(), reason: "SPILLED_BROKEN", userId: manager.id,
       lines: [{ rawMaterialId: material.id, quantity: 1 }],
     });
     actIds.push(mgrAct.id);
@@ -294,7 +310,7 @@ async function main() {
     // ---- 20-21. Батлагдсан актыг засах / устгах боломжгүй ---------------
     const editErr = await expectThrow(() =>
       updateWriteOffDraft({
-        writeOffId: draft.id, date: new Date(), reason: "LOSS", userId: owner.id,
+        writeOffId: draft.id, context: "RAW_MATERIAL", date: new Date(), reason: "LOSS", userId: owner.id,
         lines: [{ rawMaterialId: material.id, quantity: 1 }],
       }));
     check("20. Батлагдсан актыг засах боломжгүй",
@@ -306,7 +322,7 @@ async function main() {
 
     // ---- 22-23. Давхар илгээлт -------------------------------------------
     const dupAct = await createWriteOffDraft({
-      date: new Date(), reason: "EXPIRED", userId: owner.id,
+      context: "RAW_MATERIAL", date: new Date(), reason: "EXPIRED", userId: owner.id,
       lines: [{ rawMaterialId: material.id, quantity: 2 }],
     });
     actIds.push(dupAct.id);
@@ -325,7 +341,7 @@ async function main() {
 
     // Зэрэгцээ давхар илгээлт
     const raceAct = await createWriteOffDraft({
-      date: new Date(), reason: "EXPIRED", userId: owner.id,
+      context: "RAW_MATERIAL", date: new Date(), reason: "EXPIRED", userId: owner.id,
       lines: [{ rawMaterialId: material.id, quantity: 1 }],
     });
     actIds.push(raceAct.id);
@@ -356,11 +372,11 @@ async function main() {
     });
     purchaseIds.push(raceBuy.id);
     const actA = await createWriteOffDraft({
-      date: new Date(), reason: "LOSS", userId: owner.id,
+      context: "RAW_MATERIAL", date: new Date(), reason: "LOSS", userId: owner.id,
       lines: [{ rawMaterialId: raceMaterial.id, quantity: 7 }],
     });
     const actB = await createWriteOffDraft({
-      date: new Date(), reason: "LOSS", userId: manager.id,
+      context: "RAW_MATERIAL", date: new Date(), reason: "LOSS", userId: manager.id,
       lines: [{ rawMaterialId: raceMaterial.id, quantity: 6 }],
     });
     actIds.push(actA.id, actB.id);
@@ -409,6 +425,154 @@ async function main() {
     check("28b. Буцаасан акт хорогдолд тоологдоогүй",
       !reportedIds.some((r) => r.id === mgrAct.id) && report.reversedCount >= 1);
     check("28c. Тайлан шалтгаанаар задарсан", report.byReason.length > 0);
+
+    // =====================================================================
+    // ХҮРЭЭГЭЭР ТУСГААРЛАХ (BUG/UX сайжруулалт)
+    // =====================================================================
+
+    // ---- 31-32. Материалын акт зөвхөн материал хүлээж авна --------------
+    const okMaterial = await createWriteOffDraft({
+      context: "RAW_MATERIAL", date: new Date(), reason: "EXPIRED", userId: owner.id,
+      lines: [{ rawMaterialId: material.id, quantity: 1 }],
+    });
+    actIds.push(okMaterial.id);
+    check("31. Материалын акт бараа материалыг хүлээн авав", Boolean(okMaterial.id));
+
+    const matRejectsProduct = await expectThrow(() =>
+      createWriteOffDraft({
+        context: "RAW_MATERIAL", date: new Date(), reason: "EXPIRED", userId: owner.id,
+        lines: [{ productId: resale.id, quantity: 1 }],
+      }));
+    check("32. Материалын акт бүтээгдэхүүнийг татгалзав",
+      matRejectsProduct !== null && matRejectsProduct.includes("бүтээгдэхүүн оруулах боломжгүй"),
+      matRejectsProduct ?? "алдаа гараагүй");
+
+    // ---- 33-34. Бүтээгдэхүүний акт зөвхөн бүтээгдэхүүн ------------------
+    const okProduct = await createWriteOffDraft({
+      context: "PRODUCT", date: new Date(), reason: "EXPIRED", userId: owner.id,
+      lines: [{ productId: resale.id, quantity: 1 }],
+    });
+    actIds.push(okProduct.id);
+    check("33. Бүтээгдэхүүний акт бэлэн бүтээгдэхүүнийг хүлээн авав", Boolean(okProduct.id));
+
+    const prodRejectsMaterial = await expectThrow(() =>
+      createWriteOffDraft({
+        context: "PRODUCT", date: new Date(), reason: "EXPIRED", userId: owner.id,
+        lines: [{ rawMaterialId: material.id, quantity: 1 }],
+      }));
+    check("34. Бүтээгдэхүүний акт бараа материалыг татгалзав",
+      prodRejectsMaterial !== null && prodRejectsMaterial.includes("бараа материал оруулах боломжгүй"),
+      prodRejectsMaterial ?? "алдаа гараагүй");
+
+    // ---- 35. Үйлдвэрлэдэг нь БОДИТ архитектуртай тохирч байна -----------
+    const manuInProductCtx = await expectThrow(() =>
+      createWriteOffDraft({
+        context: "PRODUCT", date: new Date(), reason: "LOSS", userId: owner.id,
+        lines: [{ productId: manufactured.id, quantity: 1 }],
+      }));
+    check("35. Үйлдвэрлэдэг бүтээгдэхүүн бүтээгдэхүүний актад ч татгалзагдав",
+      manuInProductCtx !== null && manuInProductCtx.includes("үйлдвэрлэдэг"),
+      manuInProductCtx ?? "алдаа гараагүй");
+    check("35b. Үйлдвэрлэдэг бүтээгдэхүүнд дэвтрийн мөр огт байхгүй",
+      (await prisma.inventoryMovement.count({
+        where: { product: { productType: "MANUFACTURED" } },
+      })) === 0);
+    check("35c. Үйлдвэрлэдэг бүтээгдэхүүний үлдэгдэл 0 хэвээр",
+      (await prisma.product.count({
+        where: { productType: "MANUFACTURED", quantity: { not: 0 } },
+      })) === 0);
+
+    // ---- 36. Хүрээ солих оролдлого татгалзагдана ------------------------
+    const wrongCtxEdit = await expectThrow(() =>
+      updateWriteOffDraft({
+        writeOffId: okMaterial.id, context: "PRODUCT", date: new Date(),
+        reason: "EXPIRED", userId: owner.id,
+        lines: [{ productId: resale.id, quantity: 1 }],
+      }));
+    check("36. Материалын актыг бүтээгдэхүүний хүрээгээр засах боломжгүй",
+      wrongCtxEdit !== null && wrongCtxEdit.includes("хэсгээс засварлах боломжгүй"),
+      wrongCtxEdit ?? "алдаа гараагүй");
+
+    // ---- 37. Жагсаалтын шүүлтүүр зөв ------------------------------------
+    const materialList = await listWriteOffs({ context: "RAW_MATERIAL" }, 200);
+    const productList = await listWriteOffs({ context: "PRODUCT" }, 200);
+    check("37. Материалын жагсаалтад зөвхөн материалын акт",
+      materialList.every((a) => a.context === "RAW_MATERIAL"),
+      materialList.map((a) => a.context).join(","));
+    check("37b. Бүтээгдэхүүний жагсаалтад зөвхөн бүтээгдэхүүний акт",
+      productList.every((a) => a.context === "PRODUCT"));
+    check("37c. Материалын жагсаалтад бидний материалын акт байна",
+      materialList.some((a) => a.id === okMaterial.id));
+    check("37d. Бүтээгдэхүүний жагсаалтад бидний бүтээгдэхүүний акт байна",
+      productList.some((a) => a.id === okProduct.id));
+    check("37e. Материалын жагсаалтад бүтээгдэхүүний акт ОРООГҮЙ",
+      !materialList.some((a) => a.id === okProduct.id));
+
+    // ---- 38. Сонголтын жагсаалт хүрээгээрээ хязгаарлагдана ---------------
+    const matCandidates = await listWriteOffCandidates("RAW_MATERIAL");
+    const prodCandidates = await listWriteOffCandidates("PRODUCT");
+    check("38. Материалын сонголтод зөвхөн түүхий эд",
+      matCandidates.length > 0 && matCandidates.every((c) => c.kind === "rawMaterial"));
+    check("38b. Бүтээгдэхүүний сонголтод зөвхөн бүтээгдэхүүн",
+      prodCandidates.every((c) => c.kind === "product"));
+    check("38c. Бүтээгдэхүүний сонголтод үйлдвэрлэдэг нь алга",
+      !prodCandidates.some((c) => c.id === manufactured.id));
+
+    // ---- 39. ХУУЧИН холимог баримт уншигдсан хэвээр ----------------------
+    // Хуучин өгөгдлийг дуурайж, домэйнийг тойрч шууд үүсгэнэ.
+    const legacy = await prisma.inventoryWriteOff.create({
+      data: {
+        documentNo: `АКТ-LEGACY-${stamp}`, date: new Date(), reason: "OTHER",
+        note: "Хуучин холимог баримт", status: "POSTED",
+        totalQuantity: 2, totalCost: 100, createdById: owner.id,
+        postedAt: new Date(), postedById: owner.id,
+        items: {
+          create: [
+            { rawMaterialId: material.id, quantity: 1, unit: "LITER", frozenUnitCost: 50, totalCost: 50 },
+            { productId: resale.id, quantity: 1, unit: "PCS", frozenUnitCost: 50, totalCost: 50 },
+          ],
+        },
+      },
+      select: { id: true },
+    });
+    actIds.push(legacy.id);
+    const legacyDoc = await getWriteOff(legacy.id);
+    check("39. Хуучин холимог баримт уншигдав", legacyDoc !== null);
+    check("39b. Хүрээ нь MIXED гэж танигдав", legacyDoc?.context === "MIXED");
+    check("39c. Мөрүүд нь бүрэн хэвээр", legacyDoc?.items.length === 2);
+    check("39d. Холимог баримт аль ч хүрээний жагсаалтад ОРООГҮЙ",
+      !(await listWriteOffs({ context: "RAW_MATERIAL" }, 200)).some((a) => a.id === legacy.id) &&
+      !(await listWriteOffs({ context: "PRODUCT" }, 200)).some((a) => a.id === legacy.id));
+    check("39e. Шүүлтгүй жагсаалтад харагдана",
+      (await listWriteOffs({}, 200)).some((a) => a.id === legacy.id));
+    check("39f. deriveWriteOffContext холимогийг таньдаг",
+      deriveWriteOffContext([
+        { rawMaterialId: "a", productId: null },
+        { rawMaterialId: null, productId: "b" },
+      ]) === "MIXED");
+
+    // ---- 40. Тайлан хүрээгээр тусгаарлагдана ----------------------------
+    const rFrom = new Date(Date.now() - 86_400_000);
+    const rTo = new Date(Date.now() + 86_400_000);
+    const matReport = await writeOffReport({ from: rFrom, to: rTo }, "RAW_MATERIAL");
+    const prodReport = await writeOffReport({ from: rFrom, to: rTo }, "PRODUCT");
+    check("40. Материалын тайланд зөвхөн бараа материал",
+      matReport.bySubjectKind.every((r) => r.key === "rawMaterial"),
+      matReport.bySubjectKind.map((r) => r.key).join(","));
+    check("40b. Бүтээгдэхүүний тайланд зөвхөн бүтээгдэхүүн",
+      prodReport.bySubjectKind.every((r) => r.key === "product"),
+      prodReport.bySubjectKind.map((r) => r.key).join(","));
+
+    // ---- 41. Нягтлан бодох логик ГАНЦ хэвээр ----------------------------
+    const serviceFiles = (await readFile("src/server/services/write-offs.ts", "utf8"));
+    check("41. Тусдаа давхардсан үйлчилгээ үүсээгүй",
+      !serviceFiles.includes("rawMaterialWriteOffService") &&
+      !serviceFiles.includes("productWriteOffService"));
+    const { readdir } = await import("node:fs/promises");
+    const services = await readdir("src/server/services");
+    check("41b. services хавтсанд ганц write-off файл",
+      services.filter((f) => f.toLowerCase().includes("write")).length === 1,
+      services.filter((f) => f.toLowerCase().includes("write")).join(","));
 
     // ---- 29. Дэвтрийн инвариант --------------------------------------
     const drift = await verifyLedgerConsistency(prisma);

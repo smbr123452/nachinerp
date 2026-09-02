@@ -49,3 +49,53 @@ export function writeOffStatusLabel(status: DocStatus): string {
 export function countsAsLoss(status: DocStatus): boolean {
   return status === "POSTED";
 }
+
+// ---------------------------------------------------------------------------
+// Актын хүрээ (context)
+// ---------------------------------------------------------------------------
+
+/**
+ * Актын хүрээ — аль төрлийн нөөцийн субьектийг агуулахыг заана.
+ *
+ *   RAW_MATERIAL — зөвхөн бараа материал
+ *   PRODUCT      — зөвхөн бүтээгдэхүүн (одоогоор бэлэн буюу RESALE)
+ *   MIXED        — хоёуланг агуулсан ХУУЧИН баримт. Шинээр үүсэхгүй, гэхдээ
+ *                  түүхэнд байвал уншигдана.
+ *
+ * Хүрээ нь баримтын мөрүүдээс ГАРНА — тусад нь багана хадгалахгүй. Ингэснээр
+ * хуучин баримтууд нүүлгэлтгүйгээр зөв ангилагдана: мөр нь ямар субьекттэй
+ * байсан, тэр нь хүрээг нь тодорхойлно.
+ */
+export type WriteOffContext = "RAW_MATERIAL" | "PRODUCT";
+export type WriteOffDocumentContext = WriteOffContext | "MIXED";
+
+export const WRITE_OFF_CONTEXT_LABEL: Record<WriteOffDocumentContext, string> = {
+  RAW_MATERIAL: "Бараа материал",
+  PRODUCT: "Бүтээгдэхүүн",
+  MIXED: "Холимог (хуучин баримт)",
+};
+
+/** Хүрээ бүрийн үндсэн зам. Жагсаалт, шинэ маягт, дэлгэрэнгүй нь эндээс. */
+export const WRITE_OFF_BASE_PATH: Record<WriteOffContext, string> = {
+  RAW_MATERIAL: "/materials/write-offs",
+  PRODUCT: "/products/write-offs",
+};
+
+export function writeOffPath(context: WriteOffContext, suffix = ""): string {
+  return `${WRITE_OFF_BASE_PATH[context]}${suffix}`;
+}
+
+/** Мөрүүдээс баримтын хүрээг гаргана. */
+export function deriveWriteOffContext(
+  items: { rawMaterialId: string | null; productId: string | null }[],
+): WriteOffDocumentContext {
+  const hasMaterial = items.some((i) => i.rawMaterialId !== null);
+  const hasProduct = items.some((i) => i.productId !== null);
+  if (hasMaterial && hasProduct) return "MIXED";
+  return hasProduct ? "PRODUCT" : "RAW_MATERIAL";
+}
+
+/** Хуучин холимог баримтыг дэлгэцэнд тусгайлан тэмдэглэнэ. */
+export function isLegacyMixed(context: WriteOffDocumentContext): boolean {
+  return context === "MIXED";
+}
