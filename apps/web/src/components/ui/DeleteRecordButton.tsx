@@ -3,8 +3,8 @@
 import { useActionState, useState } from "react";
 import { Trash2 } from "lucide-react";
 import { Alert } from "@/components/ui/Alert";
-import { Button, SubmitButton } from "@/components/ui/Button";
-import { Modal, ModalActions } from "@/components/ui/Modal";
+import { Button } from "@/components/ui/Button";
+import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { IDLE, type ActionState } from "@/lib/action-state";
 
 /**
@@ -57,28 +57,18 @@ export function DeleteRecordButton({
         </Alert>
       ) : null}
 
-      <Modal
+      <ConfirmDialog
         open={open}
         onClose={() => setOpen(false)}
         title={title}
         description={description}
-        tone="danger"
-      >
-        <form
-          action={(formData) => {
-            setOpen(false);
-            formAction(formData);
-          }}
-        >
-          <input type="hidden" name="id" value={id} />
-          <ModalActions>
-            <Button variant="secondary" onClick={() => setOpen(false)}>
-              Болих
-            </Button>
-            <SubmitButton variant="danger">Устгах</SubmitButton>
-          </ModalActions>
-        </form>
-      </Modal>
+        confirmLabel="Устгах"
+        hiddenFields={{ id }}
+        action={(formData) => {
+          setOpen(false);
+          formAction(formData);
+        }}
+      />
     </>
   );
 }

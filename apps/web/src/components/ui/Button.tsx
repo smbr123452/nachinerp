@@ -5,14 +5,17 @@ import { useFormStatus } from "react-dom";
 import { Loader2 } from "lucide-react";
 import { cn } from "@/lib/cn";
 
-type Variant = "primary" | "secondary" | "danger" | "ghost" | "link";
+type Variant = "primary" | "secondary" | "danger" | "dangerSolid" | "ghost" | "link";
 type Size = "sm" | "md" | "lg" | "icon";
 
 /**
  * Товчны шатлал:
  *  primary   — хуудасны гол үйлдэл (баталгаажуулах, хадгалах)
  *  secondary — хоёрдогч үйлдэл
- *  danger    — цуцлах / буцаах зэрэг эргэлт буцалтгүй үйлдэл
+ *  danger    — эргэлт буцалтгүй үйлдлийг НЭЭХ товч (зөөлөн улаан)
+ *  dangerSolid — баталгаажуулалтын эцсийн устгах / цуцлах товч. Зөвхөн
+ *                баталгаажуулах модалын гол үйлдэлд — хуудсан дээр
+ *                тарааж хэрэглэвэл улаан өнгө утгаа алдана.
  *  ghost     — жижиг, ач холбогдол багатай үйлдэл
  */
 const VARIANTS: Record<Variant, string> = {
@@ -25,6 +28,9 @@ const VARIANTS: Record<Variant, string> = {
   danger:
     "border border-red-200 bg-red-50 text-red-700 hover:border-red-300 hover:bg-red-100 " +
     "active:bg-red-200 disabled:border-red-100 disabled:text-red-300",
+  dangerSolid:
+    "bg-red-600 text-white shadow-sm hover:bg-red-700 active:bg-red-800 " +
+    "disabled:bg-red-300 disabled:shadow-none",
   ghost: "text-ink-600 hover:bg-ink-100 hover:text-ink-900 active:bg-ink-200 disabled:text-ink-300",
   link: "text-brand-600 underline-offset-4 hover:text-brand-700 hover:underline disabled:text-ink-400",
 };

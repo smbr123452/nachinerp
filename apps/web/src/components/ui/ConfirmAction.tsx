@@ -1,11 +1,10 @@
 "use client";
 
 import { useActionState, useState } from "react";
-import { AlertTriangle } from "lucide-react";
 import { Alert } from "./Alert";
-import { Button, SubmitButton } from "./Button";
+import { Button } from "./Button";
+import { ConfirmDialog } from "./ConfirmDialog";
 import { Field, Textarea } from "./Field";
-import { Modal, ModalActions } from "./Modal";
 import { IDLE, type ActionState } from "@/lib/action-state";
 
 /**
@@ -36,41 +35,28 @@ export function CancelDocumentButton({
         {buttonLabel}
       </Button>
 
-      <Modal
+      <ConfirmDialog
         open={open}
         onClose={() => setOpen(false)}
         title={title}
         description={description}
-        tone="danger"
+        confirmLabel="Цуцлахыг баталгаажуулах"
+        pendingLabel="Цуцалж байна..."
+        hiddenFields={{ id }}
+        action={formAction}
       >
-        <form action={formAction} className="space-y-4">
-          <input type="hidden" name="id" value={id} />
+        {state.status === "error" && state.message ? (
+          <Alert tone="error">{state.message}</Alert>
+        ) : null}
 
-          {state.status === "error" && state.message ? (
-            <Alert tone="error">{state.message}</Alert>
-          ) : (
-            <Alert tone="warning" icon={false}>
-              <span className="flex items-start gap-2">
-                <AlertTriangle aria-hidden className="mt-0.5 h-4 w-4 shrink-0 text-amber-600" />
-                Энэ үйлдлийг буцаах боломжгүй. Шалтгаан нь аудитын түүхэд хадгалагдана.
-              </span>
-            </Alert>
-          )}
+        <Field label="Шалтгаан" htmlFor="cancel-note" required error={state.fieldErrors?.note}>
+          <Textarea id="cancel-note" name="note" required placeholder="Жишээ: буруу бүртгэсэн" />
+        </Field>
 
-          <Field label="Шалтгаан" htmlFor="cancel-note" required error={state.fieldErrors?.note}>
-            <Textarea id="cancel-note" name="note" required placeholder="Жишээ: буруу бүртгэсэн" />
-          </Field>
-
-          <ModalActions>
-            <Button variant="secondary" onClick={() => setOpen(false)}>
-              Болих
-            </Button>
-            <SubmitButton variant="danger" pendingText="Цуцалж байна...">
-              Цуцлахыг баталгаажуулах
-            </SubmitButton>
-          </ModalActions>
-        </form>
-      </Modal>
+        <p className="text-xs leading-5 text-ink-500">
+          Энэ үйлдлийг буцаах боломжгүй. Шалтгаан нь аудитын түүхэд хадгалагдана.
+        </p>
+      </ConfirmDialog>
     </>
   );
 }
