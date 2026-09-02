@@ -3,7 +3,8 @@ import type { Account, DocStatus, Prisma } from "@prisma/client";
 import { d, money, ZERO, type Dec } from "@/lib/decimal";
 import { prisma, type Tx } from "@/lib/prisma";
 import { writeAudit } from "@/lib/audit";
-import { startOfLocalDay } from "@/lib/dates";
+import { localDayKey, startOfLocalDay } from "@/lib/dates";
+import type { ClientPayable, PayableStatus } from "@/lib/payables";
 import { recordMoneyTransaction } from "./money";
 
 /**
@@ -51,8 +52,11 @@ export class PayableStateError extends Error {
  *   OVERDUE — үлдэгдэлтэй бөгөөд төлөх өдөр өнгөрсөн (хэсэгчлэн төлсөн ч)
  *   PARTIAL — үлдэгдэлтэй, төлсөн дүн 0-ээс их
  *   UNPAID  — үлдэгдэлтэй, огт төлөөгүй
+ *
+ * Шошго нь клиент талд ч хэрэгтэй тул "server-only" биш модульд байрлана.
  */
-export type PayableStatus = "UNPAID" | "PARTIAL" | "PAID" | "OVERDUE";
+export type { PayableStatus } from "@/lib/payables";
+export { PAYABLE_STATUS_LABEL } from "@/lib/payables";
 
 export function derivePayableStatus(params: {
   paid: Dec;
@@ -73,13 +77,6 @@ export function derivePayableStatus(params: {
   }
   return params.paid.greaterThan(0) ? "PARTIAL" : "UNPAID";
 }
-
-export const PAYABLE_STATUS_LABEL: Record<PayableStatus, string> = {
-  UNPAID: "Төлөгдөөгүй",
-  PARTIAL: "Хэсэгчлэн төлсөн",
-  PAID: "Төлөгдсөн",
-  OVERDUE: "Хугацаа хэтэрсэн",
-};
 
 /** Батлагдсан төлбөрүүдийн нийлбэр. Буцаагдсан төлбөр тооцогдохгүй. */
 export function paidFromPayments(payments: { amount: Prisma.Decimal; status: DocStatus }[]): Dec {
@@ -692,4 +689,39 @@ export async function getUpcomingPayables(limit = 5, now = new Date()): Promise<
       return b.outstanding.comparedTo(a.outstanding);
     })
     .slice(0, limit);
+}
+
+/**
+ * Клиент бүрдэлд дамжуулах хэлбэр. Decimal ба Date нь серверийн хилээр
+ * дамжихгүй тул энгийн утга болгоно. Дүнгүүд ЗӨВХӨН харуулахад
+ * зориулагдсан — шалгалт бүр сервер дээр Decimal-аар дахин хийгдэнэ.
+ */
+export function toClientPayable(view: PayableView): ClientPayable {
+  return {
+    id: view.id,
+    purchaseId: view.purchaseId,
+    purchaseNo: view.purchaseNo,
+    supplierId: view.supplierId,
+    supplierName: view.supplierName,
+    originalAmount: view.originalAmount.toNumber(),
+    paid: view.paid.toNumber(),
+    outstanding: view.outstanding.toNumber(),
+    dueDate: view.dueDate ? localDayKey(view.dueDate) : null,
+    note: view.note,
+    status: view.status,
+    cancelled: view.docStatus !== "POSTED" || view.purchaseStatus !== "POSTED",
+    payments: view.payments.map((p) => ({
+      id: p.id,
+      amount: p.amount.toNumber(),
+      account: p.account,
+      paidAt: p.paidAt.toISOString(),
+      note: p.note,
+      reference: p.reference,
+      status: p.status === "REVERSED" ? "REVERSED" : "POSTED",
+      createdByName: p.createdByName,
+      reversedAt: p.reversedAt ? p.reversedAt.toISOString() : null,
+      reversedByName: p.reversedByName,
+      reversalNote: p.reversalNote,
+    })),
+  };
 }

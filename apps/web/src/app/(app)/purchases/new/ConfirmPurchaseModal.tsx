@@ -44,6 +44,7 @@ export function ConfirmPurchaseModal({
   supplierName,
   paymentLabel,
   dateLabel,
+  credit,
   pending,
 }: {
   open: boolean;
@@ -54,6 +55,8 @@ export function ConfirmPurchaseModal({
   supplierName: string;
   paymentLabel: string;
   dateLabel: string;
+  /** Зээлээр авах бол өглөгийн нөхцөл. Бэлэн/банкаар бол null. */
+  credit: { supplierName: string; dueDate: string | null } | null;
   /** Илгээж байгаа эсэх. Модал нь формын ГАДНА тул useFormStatus ажиллахгүй. */
   pending: boolean;
 }) {
@@ -171,6 +174,37 @@ export function ConfirmPurchaseModal({
             </tbody>
           </Table>
         </div>
+
+        {/* --- Зээлийн нөхцөл ---------------------------------------------
+            Мөнгө одоо гарахгүй: оронд нь өглөг үүснэ. Хэрэглэгч баталгаажуулахаас
+            ӨМНӨ хэнд, хэдийг, хэзээ гэдгээ харна. */}
+        {credit ? (
+          <div className="rounded-lg border border-amber-200 bg-amber-50/60 p-4">
+            <p className="text-sm font-medium text-ink-900">Зээлийн нөхцөл</p>
+            <dl className="mt-2 grid grid-cols-2 gap-x-4 gap-y-2 text-[13px] sm:grid-cols-4">
+              <div>
+                <dt className="text-ink-500">Төлбөрийн нөхцөл</dt>
+                <dd className="font-medium text-ink-900">{paymentLabel}</dd>
+              </div>
+              <div className="min-w-0">
+                <dt className="text-ink-500">Нийлүүлэгч</dt>
+                <dd className="truncate font-medium text-ink-900">{credit.supplierName}</dd>
+              </div>
+              <div>
+                <dt className="text-ink-500">Нийт өглөг</dt>
+                <dd className="tabular font-medium text-ink-900">{formatMoney(total)}</dd>
+              </div>
+              <div>
+                <dt className="text-ink-500">Төлөх хугацаа</dt>
+                <dd className="font-medium text-ink-900">{credit.dueDate ?? "Тодорхойгүй"}</dd>
+              </div>
+            </dl>
+            <p className="mt-2 text-[13px] text-ink-600">
+              Одоо мөнгө гарахгүй. Төлбөрийг дараа нь худалдан авалтын хуудаснаас
+              бүртгэнэ.
+            </p>
+          </div>
+        ) : null}
 
         {/* --- Баримтын зураг (заавал биш) --------------------------------- */}
         <div>

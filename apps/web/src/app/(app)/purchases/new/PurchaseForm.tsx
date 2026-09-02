@@ -79,6 +79,8 @@ export function PurchaseForm({
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [paymentMethod, setPaymentMethod] = useState("CASH");
   const [purchaseDate, setPurchaseDate] = useState(today);
+  const [dueDate, setDueDate] = useState("");
+  const isCredit = paymentMethod === "CREDIT";
   /**
    * Формын энэ хуулбарын давхардлаас хамгаалах түлхүүр. Хоёр дахин дарах,
    * сүлжээ давтан илгээхэд сервер тал ижил түлхүүрийг таньж, ШИНЭ баримт
@@ -264,13 +266,50 @@ export function PurchaseForm({
               >
                 <option value="CASH">Бэлэн (кассаас)</option>
                 <option value="BANK">Банк</option>
-                <option value="CREDIT">Зээлээр (төлбөр хийгдээгүй)</option>
+                <option value="CREDIT">Зээлээр / Дараа төлөх</option>
               </Select>
             </Field>
             <Field label="Тайлбар" htmlFor="note">
               <Input id="note" name="note" placeholder="Сонголтоор" />
             </Field>
           </FieldGrid>
+
+          {/* Зээлийн нөхцөл — зөвхөн зээлээр авахад. Мөнгө одоо гарахгүй,
+              оронд нь нийлүүлэгчид өглөг үүснэ. */}
+          {isCredit ? (
+            <div className="mt-4 rounded-lg border border-amber-200 bg-amber-50/60 p-4">
+              <p className="text-[13px] font-medium text-ink-900">Зээлийн нөхцөл</p>
+              <p className="mt-0.5 text-[13px] text-ink-600">
+                Мөнгө одоо гарахгүй. Нийлүүлэгчид өглөг үүсэж, дараа нь хэсэгчлэн
+                эсвэл бүтнээр төлнө.
+              </p>
+              {!supplierId ? (
+                <Alert tone="warning" className="mt-3">
+                  Зээлээр авахад нийлүүлэгчийг заавал сонгоно — өглөг хэнд үүсэхийг
+                  тодорхойлно.
+                </Alert>
+              ) : null}
+              <FieldGrid columns={2} className="mt-3">
+                <Field
+                  label="Төлөх хугацаа"
+                  htmlFor="dueDate"
+                  hint="Заавал биш. Хоосон бол «Тодорхойгүй»."
+                  error={state.fieldErrors?.dueDate}
+                >
+                  <Input
+                    id="dueDate"
+                    name="dueDate"
+                    type="date"
+                    value={dueDate}
+                    onChange={(event) => setDueDate(event.target.value)}
+                  />
+                </Field>
+                <Field label="Өглөгийн тэмдэглэл" htmlFor="creditNote">
+                  <Input id="creditNote" name="creditNote" placeholder="Сонголтоор" />
+                </Field>
+              </FieldGrid>
+            </div>
+          ) : null}
         </CardBody>
       </Card>
 
@@ -465,7 +504,7 @@ export function PurchaseForm({
           <Button
             size="lg"
             onClick={() => setConfirmOpen(true)}
-            disabled={filledRows === 0 || isPending}
+            disabled={filledRows === 0 || isPending || (isCredit && !supplierId)}
           >
             Худалдан авалт бүртгэх
           </Button>
@@ -485,6 +524,7 @@ export function PurchaseForm({
       supplierName={supplierName}
       paymentLabel={PURCHASE_PAYMENT_LABEL[paymentMethod as keyof typeof PURCHASE_PAYMENT_LABEL]}
       dateLabel={purchaseDate}
+      credit={isCredit ? { supplierName, dueDate: dueDate || null } : null}
       pending={isPending}
     />
 

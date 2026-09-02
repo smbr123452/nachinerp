@@ -16,6 +16,11 @@ type SearchParams = Promise<{
   account?: string;
   type?: string;
   direction?: string;
+  psupplier?: string;
+  pstatus?: string;
+  poverdue?: string;
+  pdueFrom?: string;
+  pdueTo?: string;
 }>;
 
 const ACCOUNTS = new Set(["CASH", "BANK"]);
@@ -26,6 +31,8 @@ const TYPES = new Set([
   "EXPENSE_OUT",
   "BANK_DEPOSIT",
   "OWNER_ADJUSTMENT",
+  "SUPPLIER_PAYMENT_OUT",
+  "SUPPLIER_PAYMENT_REVERSAL_IN",
   "OTHER_IN",
   "OTHER_OUT",
 ]);
@@ -63,6 +70,13 @@ export default async function MoneyPage({ searchParams }: { searchParams: Search
         rangeKey={parseRangeKey(params.range ?? "7d")}
         filters={filters}
         query={query}
+        payableParams={{
+          psupplier: params.psupplier,
+          pstatus: params.pstatus,
+          poverdue: params.poverdue,
+          pdueFrom: params.pdueFrom,
+          pdueTo: params.pdueTo,
+        }}
       />
     );
   }
