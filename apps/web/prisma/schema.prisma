@@ -315,6 +315,16 @@ model Purchase {
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
 
+  /// Баталгаажуулалтыг давхардуулахаас хамгаалах түлхүүр.
+  ///
+  /// Формын хуулбар бүр нэг л түлхүүртэй. Хоёр дахин дарах, сүлжээ давтан
+  /// илгээх зэрэгт ижил түлхүүртэй хүсэлт ирвэл ШИНЭ баримт үүсэхгүй,
+  /// өмнө нь үүссэн баримт буцна — нөөц хоёр дахин нэмэгдэхгүй.
+  ///
+  /// Хуучин баримтуудад утга байхгүй тул nullable. Postgres-д NULL нь
+  /// ялгаатай гэж тооцогддог учир unique индекст саад болохгүй.
+  idempotencyKey String? @unique
+
   supplier    Supplier?            @relation(fields: [supplierId], references: [id], onDelete: SetNull)
   createdBy   User                 @relation("PurchaseCreatedBy", fields: [createdById], references: [id], onDelete: Restrict)
   items       PurchaseItem[]

@@ -201,6 +201,30 @@ async function main() {
     check("9d. Худалдан авалт нь хэвээр",
       (await prisma.purchase.count({ where: { supplierId: a.id } })) === 4);
 
+    // ---- A/B/C. Дараалан олон бараа холбох (UI-ийн алдааны домэйн хувилбар)
+    //      Гурван өөр бараа дараалан холбогдох ёстой.
+    const extra = await prisma.rawMaterial.findMany({
+      where: { isActive: true, id: { not: material.id } },
+      take: 2,
+      orderBy: { name: "asc" },
+    });
+    for (const [i, m] of extra.entries()) {
+      await addSupplierItem({ supplierId: a.id, itemKey: `rm:${m.id}`, userId: owner.id });
+      check(`A/B/C. ${i + 2} дахь бараа дараалан холбогдов`,
+        (await listSupplierItems(a.id)).some((x) => x.subject.id === m.id), m.name);
+    }
+    const afterSeq = await listSupplierItems(a.id);
+    check("A/B/C. Нийт 4 бараа холбогдсон", afterSeq.length === 4, `${afterSeq.length}`);
+
+    // ---- F. Салгасан бараа дахин холбогдох боломжтой ----------------------
+    const reAdd = afterSeq.find((x) => x.subject.id === extra[0]!.id)!;
+    await removeSupplierItem({ supplierItemId: reAdd.id, userId: owner.id });
+    check("F. Салгасны дараа сонголтод дахин гарч ирэв",
+      (await listEligibleItems(a.id)).some((x) => x.id === extra[0]!.id));
+    await addSupplierItem({ supplierId: a.id, itemKey: `rm:${extra[0]!.id}`, userId: manager.id });
+    check("F. Салгасан бараа дахин холбогдов",
+      (await listSupplierItems(a.id)).some((x) => x.subject.id === extra[0]!.id));
+
     // ---- 15. Холбоос салгах нь түүхийг устгахгүй -------------------------
     const itemsBefore = await listSupplierItems(a.id);
     const productLink = itemsBefore.find((i) => i.kind === "product")!;
@@ -227,13 +251,35 @@ async function main() {
     check("15f. Түүхэн үнэ хэвээр харагдана",
       new D((await getSupplierItemPrices(a.id)).get(`pr:${resale.id}`)!.unitPrice).equals(2100));
 
+    // ---- G/H. Түүхий эдийн холбоос салгахад нөөц, өртөг, түүх хөндөгдөхгүй
+    const matBefore = await prisma.rawMaterial.findUniqueOrThrow({ where: { id: material.id } });
+    const matMovesBefore = await prisma.inventoryMovement.count({ where: { rawMaterialId: material.id } });
+    const matPurchaseItemsBefore = await prisma.purchaseItem.count({ where: { rawMaterialId: material.id } });
+    const matLink = (await listSupplierItems(a.id)).find((x) => x.subject.id === material.id)!;
+
+    await removeSupplierItem({ supplierItemId: matLink.id, userId: owner.id });
+
+    const matAfter = await prisma.rawMaterial.findUniqueOrThrow({ where: { id: material.id } });
+    check("G. Түүхий эд өөрөө устаагүй", matAfter !== null);
+    check("H. Үлдэгдэл хэвээр",
+      new D(matAfter.quantity).equals(new D(matBefore.quantity)), matAfter.quantity.toString());
+    check("H. Жигнэсэн дундаж өртөг хэвээр",
+      new D(matAfter.averageCost).equals(new D(matBefore.averageCost)), matAfter.averageCost.toString());
+    check("H. Сүүлийн авалтын үнэ хэвээр",
+      new D(matAfter.lastPurchasePrice ?? 0).equals(new D(matBefore.lastPurchasePrice ?? 0)));
+    check("H. Нөөцийн хөдөлгөөн хэвээр",
+      (await prisma.inventoryMovement.count({ where: { rawMaterialId: material.id } })) === matMovesBefore);
+    check("G. Худалдан авалтын мөр хэвээр",
+      (await prisma.purchaseItem.count({ where: { rawMaterialId: material.id } })) === matPurchaseItemsBefore);
+
     // ---- Жагсаалтын нэгтгэл ---------------------------------------------
     const list = await listSuppliers({ query: TAG });
     const rowA = list.find((r) => r.id === a.id);
     // Зөвхөн БАТЛАГДСАН баримт тоологдоно: p1 + p2. p3 цуцлагдсан, нэг нь DRAFT.
     check("Жагсаалтад зөвхөн батлагдсан худалдан авалт тоологдов",
       rowA?.purchaseCount === 2, `${rowA?.purchaseCount}`);
-    check("Жагсаалтад холбогдсон барааны тоо зөв", rowA?.itemCount === 1, `${rowA?.itemCount}`);
+    // 4 холбоос нэмэгдээд, бүтээгдэхүүн ба түүхий эдийн холбоос салгагдсан.
+    check("Жагсаалтад холбогдсон барааны тоо зөв", rowA?.itemCount === 2, `${rowA?.itemCount}`);
     check("Хайлт нэрээр ажиллаж байна", list.length >= 2, `${list.length}`);
     check("Төлөвөөр шүүх ажиллаж байна",
       (await listSuppliers({ query: TAG, status: "inactive" })).length === 0);

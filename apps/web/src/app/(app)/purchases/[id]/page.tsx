@@ -1,6 +1,6 @@
 import { notFound } from "next/navigation";
 import { PageHeader } from "@/components/layout/PageHeader";
-import { StatusBadge } from "@/components/ui/Badge";
+import { Badge } from "@/components/ui/Badge";
 import { Alert } from "@/components/ui/Alert";
 import { Card, CardBody, CardHeader } from "@/components/ui/Card";
 import { CancelDocumentButton } from "@/components/ui/ConfirmAction";
@@ -11,15 +11,23 @@ import { prisma } from "@/lib/prisma";
 import { unitLabel } from "@/lib/units";
 import { subjectDisplay } from "@/lib/stock-subject";
 import { MOVEMENT_TYPE_LABEL } from "@/lib/movements";
-import { PURCHASE_PAYMENT_LABEL } from "@/server/services/purchases";
+import { PURCHASE_PAYMENT_LABEL, PURCHASE_STATUS_LABEL } from "@/lib/purchases";
 import { listPurchaseAttachments } from "@/server/services/attachments";
-import { PurchaseAttachments } from "./Attachments";
+import { ReceiptViewer } from "./ReceiptViewer";
 import { cancelPurchaseAction } from "../actions";
+
+/** Худалдан авалтын төлөвийн өнгө. Нийтлэг StatusBadge-ийг хөндөөгүй. */
+const STATUS_TONE: Record<string, "success" | "neutral" | "danger"> = {
+  DRAFT: "neutral",
+  POSTED: "success",
+  CANCELLED: "danger",
+  REVERSED: "danger",
+};
 
 type Params = Promise<{ id: string }>;
 
 export default async function PurchaseDetailPage({ params }: { params: Params }) {
-  const user = await requirePageUser();
+  await requirePageUser();
   const { id } = await params;
 
   const purchase = await prisma.purchase.findUnique({
@@ -60,7 +68,9 @@ export default async function PurchaseDetailPage({ params }: { params: Params })
       />
 
       <div className="mb-4 flex flex-wrap items-center gap-3">
-        <StatusBadge status={purchase.status} />
+        <Badge tone={STATUS_TONE[purchase.status]} dot>
+          {PURCHASE_STATUS_LABEL[purchase.status]}
+        </Badge>
         <span className="text-sm text-ink-500">Бүртгэсэн: {purchase.createdBy.name}</span>
         <span className="text-sm text-ink-500">{formatDateTime(purchase.createdAt)}</span>
       </div>
@@ -127,15 +137,11 @@ export default async function PurchaseDetailPage({ params }: { params: Params })
 
       <Card className="mb-6">
         <CardHeader
-          title="Баримт / нэхэмжлэх"
-          description="Зураг эсвэл PDF хавсаргана. Зөвхөн нэвтэрсэн хэрэглэгч үзнэ."
+          title="Баримтын зураг"
+          description="Баталгаажуулах үед хавсаргасан. Зөвхөн нэвтэрсэн хэрэглэгч үзнэ."
         />
         <CardBody>
-          <PurchaseAttachments
-            purchaseId={purchase.id}
-            attachments={attachments}
-            canDelete={user.role === "OWNER"}
-          />
+          <ReceiptViewer attachments={attachments} />
         </CardBody>
       </Card>
 

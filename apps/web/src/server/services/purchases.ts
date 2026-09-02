@@ -8,6 +8,16 @@ import { applyMovement, subjectOf, type StockSubject } from "./inventory";
 import { recordMoneyTransaction } from "./money";
 import { nextDocumentNumber } from "./numbering";
 
+/** Prisma-ийн давхардлын алдаа (P2002) эсэхийг шалгана. */
+function isUniqueViolation(error: unknown): boolean {
+  return (
+    typeof error === "object" &&
+    error !== null &&
+    "code" in error &&
+    (error as { code?: string }).code === "P2002"
+  );
+}
+
 /**
  * Худалдан авалтын мөр. Түүхий эд ЭСВЭЛ RESALE бүтээгдэхүүн —
  * rawMaterialId / productId-ийн ЯГ НЭГИЙГ өгнө.
@@ -20,6 +30,18 @@ export type PurchaseLineInput = {
   unitPrice: string | number;
 };
 
+/**
+ * Баримтын зураг. Файл нь ЭНЭ ФУНКЦ дуудагдахаас ӨМНӨ хадгалалтын
+ * давхаргад бичигдсэн байна — гүйлгээний дотор файл бичих нь түгжээг
+ * удаан барих тул тэгэхгүй. Энд зөвхөн мета мөр үүснэ.
+ */
+export type PurchaseReceiptInput = {
+  storageKey: string;
+  originalFileName: string;
+  mimeType: string;
+  fileSize: number;
+};
+
 export type PostPurchaseInput = {
   date: Date;
   supplierId?: string | null;
@@ -28,18 +50,67 @@ export type PostPurchaseInput = {
   items: PurchaseLineInput[];
   userId: string;
   ipAddress?: string | null;
+  /** Баталгаажуулах үед хавсаргах баримтын зураг. Заавал биш. */
+  receipt?: PurchaseReceiptInput | null;
+  /**
+   * Давхардлаас хамгаалах түлхүүр. Ижил түлхүүртэй баримт аль хэдийн
+   * байвал ШИНЭ баримт үүсэхгүй, өмнөх нь буцна.
+   */
+  idempotencyKey?: string | null;
 };
 
 /**
- * Худалдан авалт бүртгэх — БҮГД нэг гүйлгээнд:
+ * Худалдан авалтыг БАТАЛГААЖУУЛАХ — БҮГД нэг гүйлгээнд:
  *   1) баримт, 2) мөрүүд, 3) нөөц нэмэх, 4) жигнэсэн дундаж өртөг,
- *   5) нөөцийн хөдөлгөөн, 6) мөнгөн гүйлгээ, 7) аудит.
+ *   5) нөөцийн хөдөлгөөн, 6) мөнгөн гүйлгээ, 7) баримтын зураг, 8) аудит.
+ *
+ * Нөөц ЗӨВХӨН энд өөрчлөгдөнө: баталгаажуулахаас өмнө ямар ч баримт,
+ * хөдөлгөөн, мөнгөн гүйлгээ үүсэхгүй. Гүйлгээ бүтэлгүйтвэл юу ч үлдэхгүй.
+ *
+ * Давхар гүйцэтгэлээс хамгаалах: idempotencyKey өгсөн бол ижил түлхүүртэй
+ * баримт байгаа эсэхийг шалгаж, байвал шинээр үүсгэхгүй. Зэрэгцээ хоёр
+ * хүсэлт зэрэг ирвэл ч unique индекс хоёр дахийг нь зогсооно.
  */
-export async function postPurchase(input: PostPurchaseInput): Promise<{ id: string; purchaseNo: string }> {
+export async function postPurchase(
+  input: PostPurchaseInput,
+): Promise<{ id: string; purchaseNo: string; created: boolean }> {
   if (input.items.length === 0) {
     throw new Error("Дор хаяж нэг мөр нэмнэ үү.");
   }
 
+  // Аль хэдийн баталгаажсан эсэхийг гүйлгээнээс ӨМНӨ шалгана — давтан
+  // дарсан тохиолдолд шинэ дугаар ч зарцуулахгүй.
+  if (input.idempotencyKey) {
+    const existing = await prisma.purchase.findUnique({
+      where: { idempotencyKey: input.idempotencyKey },
+      select: { id: true, purchaseNo: true },
+    });
+    // created:false — давхардсан илгээлт. Дуудагч тал энэ тохиолдолд
+    // шинээр хадгалсан файлаа устгаж, өнчин файл үлдээхгүй.
+    if (existing) return { ...existing, created: false };
+  }
+
+  try {
+    return await postPurchaseTransaction(input);
+  } catch (error) {
+    // Зэрэгцээ хоёр хүсэлт ижил түлхүүрээр яг зэрэг ирвэл нэг нь unique
+    // индекст мөргөнө. Энэ нь алдаа БИШ — давхардал амжилттай зогссон
+    // гэсэн үг. Ялсан хүсэлтийн үүсгэсэн баримтыг буцаана.
+    if (input.idempotencyKey && isUniqueViolation(error)) {
+      const existing = await prisma.purchase.findUnique({
+        where: { idempotencyKey: input.idempotencyKey },
+        select: { id: true, purchaseNo: true },
+      });
+      if (existing) return { ...existing, created: false };
+    }
+    throw error;
+  }
+}
+
+/** Баталгаажуулалтын бодит гүйлгээ. Дээрх боодол давхардлыг зохицуулна. */
+async function postPurchaseTransaction(
+  input: PostPurchaseInput,
+): Promise<{ id: string; purchaseNo: string; created: boolean }> {
   return prisma.$transaction(async (tx) => {
     const materialIds = input.items.flatMap((i) => (i.rawMaterialId ? [i.rawMaterialId] : []));
     const productIds = input.items.flatMap((i) => (i.productId ? [i.productId] : []));
@@ -129,6 +200,7 @@ export async function postPurchase(input: PostPurchaseInput): Promise<{ id: stri
         totalAmount,
         status: "POSTED",
         createdById: input.userId,
+        idempotencyKey: input.idempotencyKey ?? null,
         items: {
           create: prepared.map((p) => ({
             rawMaterialId: p.rawMaterialId,
@@ -173,16 +245,32 @@ export async function postPurchase(input: PostPurchaseInput): Promise<{ id: stri
       });
     }
 
+    // Баримтын зураг — файл нь хадгалалтад аль хэдийн бичигдсэн, энд
+    // зөвхөн мета мөр. Гүйлгээ унавал энэ мөр ч үүсэхгүй.
+    if (input.receipt) {
+      await tx.purchaseAttachment.create({
+        data: {
+          purchaseId: purchase.id,
+          originalFileName: input.receipt.originalFileName,
+          mimeType: input.receipt.mimeType,
+          fileSize: input.receipt.fileSize,
+          storageKey: input.receipt.storageKey,
+          uploadedById: input.userId,
+        },
+      });
+    }
+
     await writeAudit(
       {
         userId: input.userId,
-        action: "PURCHASE_CREATED",
+        action: "PURCHASE_CONFIRMED",
         entityType: "Purchase",
         entityId: purchase.id,
         newValue: {
           purchaseNo,
           totalAmount: totalAmount.toString(),
           paymentMethod: input.paymentMethod,
+          hasReceipt: Boolean(input.receipt),
           items: prepared.map((p) => ({
             rawMaterialId: p.rawMaterialId,
             baseQuantity: p.baseQuantity.toString(),
@@ -194,7 +282,7 @@ export async function postPurchase(input: PostPurchaseInput): Promise<{ id: stri
       tx,
     );
 
-    return purchase;
+    return { ...purchase, created: true };
   });
 }
 
@@ -265,8 +353,5 @@ export async function cancelPurchase(params: {
   });
 }
 
-export const PURCHASE_PAYMENT_LABEL: Record<PurchasePaymentMethod, string> = {
-  CASH: "Бэлэн",
-  BANK: "Банк",
-  CREDIT: "Зээлээр",
-};
+// Шошго нь клиент талд ч хэрэгтэй тул "server-only" биш модульд байрлана.
+export { PURCHASE_PAYMENT_LABEL } from "@/lib/purchases";

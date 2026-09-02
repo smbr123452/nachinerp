@@ -32,7 +32,20 @@ function makeFile(name: string, type: string, data: Buffer): File {
 
 async function main() {
   const owner = await prisma.user.findFirstOrThrow({ where: { role: "OWNER" } });
-  const purchase = await prisma.purchase.findFirstOrThrow({ where: { status: "POSTED" } });
+  // Хавсралтын механикийг ЗӨВХӨН ноорог баримт дээр шалгана: баталгаажсан
+  // баримтын зураг өөрчлөгдөхгүй (тэр хоригийг test-purchase-confirmation
+  // шалгадаг). Тестийн ноорог баримтыг эцэст нь устгана.
+  const owner2 = owner;
+  const purchase = await prisma.purchase.create({
+    data: {
+      purchaseNo: `__ATT-${Date.now()}`,
+      date: new Date(),
+      paymentMethod: "BANK",
+      totalAmount: 0,
+      status: "DRAFT",
+      createdById: owner2.id,
+    },
+  });
   const createdIds: string[] = [];
 
   try {
@@ -131,9 +144,16 @@ async function main() {
     for (const id of createdIds) {
       await deletePurchaseAttachment({ attachmentId: id, userId: owner.id }).catch(() => {});
     }
+    const leftover = await prisma.purchaseAttachment.findMany({
+      where: { purchaseId: purchase.id },
+    });
+    for (const a of leftover) await fileStorage.delete(a.storageKey).catch(() => {});
+    await prisma.purchaseAttachment.deleteMany({ where: { purchaseId: purchase.id } });
+    await prisma.auditLog.deleteMany({ where: { entityId: purchase.id } });
     await prisma.auditLog.deleteMany({
       where: { action: { in: ["PURCHASE_ATTACHMENT_ADDED", "PURCHASE_ATTACHMENT_DELETED"] } },
     });
+    await prisma.purchase.delete({ where: { id: purchase.id } }).catch(() => {});
   }
 
   console.log(fails === 0 ? "\nБүх шалгалт амжилттай." : `\n${fails} шалгалт унасан.`);

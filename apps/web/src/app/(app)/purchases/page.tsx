@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { Prisma } from "@prisma/client";
 import { PageHeader } from "@/components/layout/PageHeader";
-import { StatusBadge } from "@/components/ui/Badge";
+import { Badge } from "@/components/ui/Badge";
 import { Card } from "@/components/ui/Card";
 import { EmptyRow, Table, TableLink, Td, Th, Tr } from "@/components/ui/Table";
 import { DateFilter, FilterBar, FilterSelect } from "@/components/ui/SearchFilters";
@@ -11,9 +11,17 @@ import { sum } from "@/lib/decimal";
 import { formatDate, formatMoney } from "@/lib/format";
 import { prisma } from "@/lib/prisma";
 import { parseDateInput } from "@/lib/dates";
-import { PURCHASE_PAYMENT_LABEL } from "@/server/services/purchases";
+import { PURCHASE_PAYMENT_LABEL, PURCHASE_STATUS_LABEL } from "@/lib/purchases";
 
 export const metadata = { title: "Худалдан авалт | Начин ERP" };
+
+/** Худалдан авалтын төлөвийн өнгө — нийтлэг StatusBadge-ийг хөндөөгүй. */
+const PURCHASE_STATUS_TONE: Record<string, "success" | "neutral" | "danger"> = {
+  DRAFT: "neutral",
+  POSTED: "success",
+  CANCELLED: "danger",
+  REVERSED: "danger",
+};
 
 type SearchParams = Promise<{ from?: string; to?: string; status?: string }>;
 
@@ -103,7 +111,9 @@ export default async function PurchasesPage({ searchParams }: { searchParams: Se
                     {formatMoney(purchase.totalAmount)}
                   </Td>
                   <Td>
-                    <StatusBadge status={purchase.status} />
+                    <Badge tone={PURCHASE_STATUS_TONE[purchase.status]} dot>
+                      {PURCHASE_STATUS_LABEL[purchase.status]}
+                    </Badge>
                   </Td>
                   <Td className="text-ink-500">{purchase.createdBy.name}</Td>
                 </Tr>
