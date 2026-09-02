@@ -163,7 +163,11 @@ async function main() {
 
   // 9. Аудитын бичлэг
   const auditCount = await prisma.auditLog.count();
-  const purchaseAudit = await prisma.auditLog.count({ where: { action: "PURCHASE_CREATED" } });
+  // Баталгаажуулалт нь PURCHASE_CONFIRMED-ээр бүртгэгддэг болсон; хуучин
+  // бичлэгүүд PURCHASE_CREATED хэвээр тул хоёуланг нь тооцно.
+  const purchaseAudit = await prisma.auditLog.count({
+    where: { action: { in: ["PURCHASE_CREATED", "PURCHASE_CONFIRMED"] } },
+  });
   const saleAudit = await prisma.auditLog.count({ where: { action: "SALE_FINALIZED" } });
   check("Аудитын бичлэг үүссэн", auditCount > 0, `нийт ${auditCount}, ХА ${purchaseAudit}, БО ${saleAudit}`);
 

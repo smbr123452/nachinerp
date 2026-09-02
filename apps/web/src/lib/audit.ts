@@ -87,7 +87,9 @@ export const AUDIT_ACTION_LABEL: Record<string, string> = {
   PRODUCT_CREATED: "Бүтээгдэхүүн нэмсэн",
   PRODUCT_UPDATED: "Бүтээгдэхүүн засварласан",
   RECIPE_UPDATED: "Жор шинэчилсэн",
+  // Хуучин бичлэгүүд PURCHASE_CREATED хэвээр үлдэнэ — түүхийг дарж бичихгүй.
   PURCHASE_CREATED: "Худалдан авалт бүртгэсэн",
+  PURCHASE_CONFIRMED: "Худалдан авалт баталгаажуулсан",
   PURCHASE_CANCELLED: "Худалдан авалт цуцалсан",
   SALE_FINALIZED: "Борлуулалт баталгаажуулсан",
   SALE_CANCELLED: "Борлуулалт цуцалсан",
