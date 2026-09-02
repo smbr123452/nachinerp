@@ -9,7 +9,7 @@ import { formatDate } from "@/lib/format";
 import { listSuppliers } from "@/server/services/suppliers";
 import { NewSupplierButton } from "./SuppliersClient";
 
-export const metadata = { title: "Нийлүүлэгчид | Начин ERP" };
+export const metadata = { title: "Нийлүүлэгчид" };
 
 type SearchParams = Promise<{ q?: string; status?: string }>;
 

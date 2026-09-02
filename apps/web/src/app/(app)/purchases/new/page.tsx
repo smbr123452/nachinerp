@@ -5,7 +5,7 @@ import { toDateInput } from "@/lib/format";
 import { prisma } from "@/lib/prisma";
 import { PurchaseForm, type ItemOption } from "./PurchaseForm";
 
-export const metadata = { title: "Шинэ худалдан авалт | Начин ERP" };
+export const metadata = { title: "Шинэ худалдан авалт" };
 
 export default async function NewPurchasePage() {
   await requirePageUser();

@@ -13,7 +13,7 @@ import { formatDate, formatMoney } from "@/lib/format";
 import { prisma } from "@/lib/prisma";
 import { parseDateInput } from "@/lib/dates";
 
-export const metadata = { title: "Борлуулалт | Начин ERP" };
+export const metadata = { title: "Борлуулалт" };
 
 type SearchParams = Promise<{ from?: string; to?: string; status?: string }>;
 

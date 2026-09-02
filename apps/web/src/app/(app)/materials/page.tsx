@@ -18,7 +18,7 @@ import { getUsedRawMaterialIds } from "@/server/services/master-data";
 import { EditMaterialButton, NewMaterialButton } from "./MaterialsClient";
 import { deleteRawMaterialAction } from "./actions";
 
-export const metadata = { title: "Бараа материал | Начин ERP" };
+export const metadata = { title: "Бараа материал" };
 
 type SearchParams = Promise<{ q?: string; category?: string; status?: string }>;
 

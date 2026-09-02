@@ -15,7 +15,7 @@ import { ACCOUNT_LABEL } from "@/server/services/money";
 import { cancelExpenseAction } from "./actions";
 import { NewExpenseButton, NewExpenseCategoryButton, ToggleCategoryButton } from "./ExpensesClient";
 
-export const metadata = { title: "Зардал | Начин ERP" };
+export const metadata = { title: "Зардал" };
 
 type SearchParams = Promise<{ from?: string; to?: string; category?: string; status?: string }>;
 

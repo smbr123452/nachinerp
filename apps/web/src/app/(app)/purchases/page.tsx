@@ -13,7 +13,7 @@ import { prisma } from "@/lib/prisma";
 import { parseDateInput } from "@/lib/dates";
 import { PURCHASE_PAYMENT_LABEL, PURCHASE_STATUS_LABEL } from "@/lib/purchases";
 
-export const metadata = { title: "Худалдан авалт | Начин ERP" };
+export const metadata = { title: "Худалдан авалт" };
 
 /** Худалдан авалтын төлөвийн өнгө — нийтлэг StatusBadge-ийг хөндөөгүй. */
 const PURCHASE_STATUS_TONE: Record<string, "success" | "neutral" | "danger"> = {

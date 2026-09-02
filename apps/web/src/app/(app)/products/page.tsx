@@ -18,7 +18,7 @@ import { PRODUCT_TYPE_LABEL, productFinancials, profitTone } from "@/lib/product
 import { EditProductButton, NewProductButton } from "./ProductsClient";
 import { deleteProductAction } from "./actions";
 
-export const metadata = { title: "Бүтээгдэхүүн | Начин ERP" };
+export const metadata = { title: "Бүтээгдэхүүн" };
 
 type SearchParams = Promise<{ q?: string; category?: string; status?: string; type?: string }>;
 

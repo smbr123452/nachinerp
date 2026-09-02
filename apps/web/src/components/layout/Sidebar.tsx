@@ -8,38 +8,23 @@ import { Menu, X } from "lucide-react";
 import { cn } from "@/lib/cn";
 import { visibleNavGroups } from "./nav";
 import { AccountMenu } from "./AccountMenu";
+import { SiriusAurumLockup } from "@/components/brand/SiriusAurumLockup";
 
 export function Sidebar({
   role,
   userName,
   roleLabel,
-  companyName,
 }: {
   role: Role;
   userName: string;
   roleLabel: string;
-  companyName: string;
 }) {
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
   const groups = visibleNavGroups(role);
 
-  const brand = (
-    <div className="flex items-center gap-2.5">
-      <span
-        aria-hidden
-        className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-brand-600 text-sm font-bold text-white shadow-sm"
-      >
-        Н
-      </span>
-      <span className="min-w-0">
-        <span className="block truncate text-[14px] font-semibold leading-5 text-ink-900">
-          {companyName}
-        </span>
-        <span className="block text-[11px] leading-4 text-ink-500">Удирдлагын систем</span>
-      </span>
-    </div>
-  );
+  // Товч брэнд блок. Цэсний өндрийг идэхгүйгээр таних тэмдэг болно.
+  const brand = <SiriusAurumLockup size="sm" />;
 
   const nav = (
     <nav className="flex-1 space-y-5 overflow-y-auto px-3 py-4">

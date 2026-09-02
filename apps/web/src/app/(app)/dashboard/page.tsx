@@ -3,7 +3,7 @@ import { parseRangeKey } from "@/server/services/dashboard";
 import { OwnerDashboard } from "./OwnerDashboard";
 import { ManagerDashboard } from "./ManagerDashboard";
 
-export const metadata = { title: "Хянах самбар | Начин ERP" };
+export const metadata = { title: "Хянах самбар" };
 export const dynamic = "force-dynamic";
 
 type SearchParams = Promise<{ range?: string; metric?: string }>;

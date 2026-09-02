@@ -9,7 +9,7 @@ import { d, sum } from "@/lib/decimal";
 import { formatDate, formatMoney } from "@/lib/format";
 import { prisma } from "@/lib/prisma";
 
-export const metadata = { title: "Тооллого | Начин ERP" };
+export const metadata = { title: "Тооллого" };
 
 export default async function CountsPage() {
   await requirePageUser();
