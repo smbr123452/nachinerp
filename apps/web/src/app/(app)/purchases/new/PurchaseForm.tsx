@@ -23,6 +23,7 @@ import {
   type SupplierSuggestionBundle,
 } from "./suggestions-action";
 import { PURCHASE_PAYMENT_LABEL } from "@/lib/purchases";
+import { buildConfirmLines } from "@/lib/purchase-lines";
 import { ConfirmPurchaseModal, type ConfirmLine } from "./ConfirmPurchaseModal";
 import { createPurchaseAction } from "../actions";
 
@@ -41,9 +42,35 @@ export type ItemOption = {
   lastPurchasePrice: string | null;
 };
 
-type Row = { itemKey: string; quantity: string; unit: Unit; unitPrice: string };
+/**
+ * Формын мөр.
+ *
+ * `id` нь мөрийн ТОГТВОРТОЙ дугаар — React-ийн key болон баталгаажуулах
+ * модалын key энэ дээр тулгуурлана.
+ *
+ * Яагаад барааны түлхүүр (`itemKey`) key болж чадахгүй вэ: нэг нэхэмжлэхэд
+ * ижил бараа өөр өөр үнээр ХОЁР мөр болж орж болно (жишээ нь 5кг × 4,000₮
+ * ба 3кг × 4,500₮). Энэ нь бодит, зөв өгөгдөл — сервер тал мөр бүрд тусад
+ * нь PurchaseItem ба нөөцийн хөдөлгөөн үүсгэж, жигнэсэн дундаж өртгийг
+ * дараалан тооцдог. Тиймээс key нь БАРАА биш, МӨР-ийг заана.
+ *
+ * Мөрийн байрлал (index) ч key болохгүй: дунд мөрийг устгахад React буруу
+ * мөрийн төлөвийг (нээлттэй сонголт, хайлтын утга) дараагийн мөрөнд
+ * үлдээнэ. Формын талбарын НЭР нь index-ээр явсан хэвээр — серверийн
+ * `items[0]`, `items[1]` задлалт үүнийг шаарддаг.
+ */
+type Row = { id: string; itemKey: string; quantity: string; unit: Unit; unitPrice: string };
 
-const EMPTY_ROW: Row = { itemKey: "", quantity: "", unit: "KG", unitPrice: "" };
+/** Мөрийн давтагдашгүй дугаар. */
+function newRowId(): string {
+  return typeof crypto !== "undefined" && "randomUUID" in crypto
+    ? crypto.randomUUID()
+    : `row-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+}
+
+function blankRow(): Row {
+  return { id: newRowId(), itemKey: "", quantity: "", unit: "KG", unitPrice: "" };
+}
 
 /** Модал формын гадна байрлах тул товч, файлын талбар `form` атрибутаар холбогдоно. */
 const FORM_ID = "purchase-form";
@@ -62,7 +89,7 @@ export function PurchaseForm({
   suppliers: { id: string; name: string; phone?: string | null }[];
   today: string;
 }) {
-  const [rows, setRows] = useState<Row[]>([{ ...EMPTY_ROW }]);
+  const [rows, setRows] = useState<Row[]>(() => [blankRow()]);
   const [supplierId, setSupplierId] = useState("");
   // Нийлүүлэгчийн жагсаалтыг клиент талд барина: формын дотроос шинэ
   // нийлүүлэгч үүсгэхэд хуудсыг дахин ачаалахгүйгээр нэмж, шууд сонгоно.
@@ -187,6 +214,7 @@ export function PurchaseForm({
       const existing = current.findIndex((row) => row.itemKey === suggestion.key);
       if (existing >= 0) return current;
       const row: Row = {
+        id: newRowId(),
         itemKey: suggestion.key,
         quantity: "",
         // Түүх байхгүй бол барааны үндсэн нэгжийг ашиглаж, үнийг хоосон
@@ -196,12 +224,12 @@ export function PurchaseForm({
       };
       // Эхний мөр хоосон бол түүнийг ашиглана.
       const blank = current.findIndex((r) => !r.itemKey);
-      if (blank >= 0) return current.map((r, i) => (i === blank ? row : r));
+      if (blank >= 0) return current.map((r, i) => (i === blank ? { ...row, id: r.id } : r));
       return [...current, row];
     });
   };
 
-  const addBlankRow = () => setRows((current) => [...current, { ...EMPTY_ROW }]);
+  const addBlankRow = () => setRows((current) => [...current, blankRow()]);
 
   const usedKeys = new Set(rows.map((row) => row.itemKey).filter(Boolean));
 
@@ -215,22 +243,24 @@ export function PurchaseForm({
     if (state.status === "error") setConfirmOpen(false);
   }, [state]);
 
-  /** Баталгаажуулах модалд харуулах мөрүүд. */
-  const confirmLines: ConfirmLine[] = rows
-    .filter((row) => row.itemKey && toNumber(row.quantity) > 0)
-    .map((row) => {
-      const option = byKey.get(row.itemKey);
-      const quantity = toNumber(row.quantity);
-      const unitPrice = toNumber(row.unitPrice);
-      return {
-        key: row.itemKey,
-        name: option ? `${option.name} (${option.sku})` : row.itemKey,
-        quantity,
-        unit: row.unit,
-        unitPrice,
-        subtotal: quantity * unitPrice,
-      };
-    });
+  /**
+   * Баталгаажуулах модалд харуулах мөрүүд.
+   *
+   * key нь МӨРИЙН дугаар (bulildConfirmLines) — ижил бараатай хоёр мөр
+   * байсан ч давхцахгүй. Нэгж, нэрийг энд нэмнэ.
+   */
+  const confirmLines: ConfirmLine[] = buildConfirmLines(rows).map((line) => {
+    const option = byKey.get(line.itemKey);
+    const row = rows.find((r) => r.id === line.key);
+    return {
+      key: line.key,
+      name: option ? `${option.name} (${option.sku})` : line.itemKey,
+      quantity: line.quantity,
+      unit: row?.unit ?? "KG",
+      unitPrice: line.unitPrice,
+      subtotal: line.subtotal,
+    };
+  });
 
   const supplierName =
     supplierList.find((supplier) => supplier.id === supplierId)?.name ?? "Нийлүүлэгчгүй";
@@ -380,7 +410,7 @@ export function PurchaseForm({
               const units = option ? compatibleUnits(option.unit) : [];
               const subtotal = toNumber(row.quantity) * toNumber(row.unitPrice);
               return (
-                <Tr key={index}>
+                <Tr key={row.id}>
                   <Td>
                     <SearchableCombobox
                       name={`items[${index}][itemKey]`}
