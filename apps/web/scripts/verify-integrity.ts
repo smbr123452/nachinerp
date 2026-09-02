@@ -171,6 +171,58 @@ async function main() {
   const saleAudit = await prisma.auditLog.count({ where: { action: "SALE_FINALIZED" } });
   check("Аудитын бичлэг үүссэн", auditCount > 0, `нийт ${auditCount}, ХА ${purchaseAudit}, БО ${saleAudit}`);
 
+  // 10. Нийлүүлэгчийн өглөгийн тогтвортой байдал
+  const payables = await prisma.supplierPayable.findMany({
+    include: { payments: true, purchase: { select: { paymentMethod: true, status: true } } },
+  });
+  let payableOk = true;
+  let negativeOutstanding = 0;
+  let overpaid = 0;
+  let notCredit = 0;
+  for (const payable of payables) {
+    const paid = payable.payments
+      .filter((p) => p.status === "POSTED")
+      .reduce<InstanceType<typeof D>>((acc, p) => acc.plus(new D(p.amount)), new D(0));
+    const outstanding = new D(payable.originalAmount).minus(paid);
+    // Анхны дүн = батлагдсан төлбөр + үлдэгдэл, үлдэгдэл сөрөг байж болохгүй.
+    if (outstanding.isNegative()) {
+      negativeOutstanding += 1;
+      payableOk = false;
+    }
+    if (paid.greaterThan(new D(payable.originalAmount))) {
+      overpaid += 1;
+      payableOk = false;
+    }
+    // Өглөг нь ЗӨВХӨН зээлийн худалдан авалтаас үүснэ.
+    if (payable.purchase.paymentMethod !== "CREDIT") {
+      notCredit += 1;
+      payableOk = false;
+    }
+  }
+  check("Өглөгийн үлдэгдэл сөрөг биш, илүү төлөлтгүй, зөвхөн зээлээс үүссэн", payableOk,
+    `${payables.length} өглөг · сөрөг ${negativeOutstanding} · илүү ${overpaid} · зээлийн бус ${notCredit}`);
+
+  // Батлагдсан төлбөр бүрд ЯГ НЭГ мөнгөн гүйлгээ; буцаагдсанд эсрэг гүйлгээ.
+  const postedPayments = await prisma.supplierPayment.count({ where: { status: "POSTED" } });
+  const reversedPayments = await prisma.supplierPayment.count({ where: { status: "REVERSED" } });
+  const paymentOut = await prisma.moneyTransaction.count({ where: { type: "SUPPLIER_PAYMENT_OUT" } });
+  const paymentBack = await prisma.moneyTransaction.count({
+    where: { type: "SUPPLIER_PAYMENT_REVERSAL_IN" },
+  });
+  check("Өглөгийн төлбөр бүр мөнгөн дэвтэртэй тохирч байна",
+    paymentOut === postedPayments + reversedPayments && paymentBack === reversedPayments,
+    `төлбөр ${postedPayments}+${reversedPayments} · гарсан ${paymentOut} · буцсан ${paymentBack}`);
+
+  // Төлбөр нь нөөц, өртөг, зардлыг ХЭЗЭЭ Ч хөндөхгүй.
+  const paymentIds = (await prisma.supplierPayment.findMany({ select: { id: true } })).map(
+    (row) => row.id,
+  );
+  const paymentMovements = paymentIds.length
+    ? await prisma.inventoryMovement.count({ where: { referenceId: { in: paymentIds } } })
+    : 0;
+  check("Нийлүүлэгчийн төлбөр нөөцийн хөдөлгөөн үүсгээгүй", paymentMovements === 0,
+    `${paymentMovements}`);
+
   console.log(failures === 0 ? "\nБүх шалгалт амжилттай." : `\n${failures} шалгалт унасан.`);
   if (failures > 0) process.exitCode = 1;
 }

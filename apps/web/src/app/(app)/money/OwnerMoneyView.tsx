@@ -1,7 +1,6 @@
 import Link from "next/link";
 import { ArrowRight, Banknote, Info, Landmark, TrendingDown, TrendingUp, Wallet } from "lucide-react";
 import { PageHeader } from "@/components/layout/PageHeader";
-import { Alert } from "@/components/ui/Alert";
 import { Card, CardBody, CardHeader } from "@/components/ui/Card";
 import { CashFlowChart } from "@/components/ui/CashFlowChart";
 import { CompositionBars } from "@/components/ui/CompositionBars";
@@ -17,6 +16,7 @@ import {
   getOwnerMoneyView,
   type LedgerFilters,
 } from "@/server/services/money-analytics";
+import { PayablesSection, type PayableParams } from "./PayablesSection";
 import { BankDepositButton, MoneyAdjustmentButton } from "./MoneyClient";
 import { LedgerTable } from "./LedgerTable";
 
@@ -61,10 +61,12 @@ export async function OwnerMoneyView({
   rangeKey,
   filters,
   query,
+  payableParams,
 }: {
   rangeKey: RangeKey;
   filters: LedgerFilters;
   query: URLSearchParams;
+  payableParams: PayableParams;
 }) {
   const data = await getOwnerMoneyView(rangeKey, filters);
   const today = toDateInput(new Date());
@@ -208,13 +210,13 @@ export async function OwnerMoneyView({
         </Card>
       </div>
 
-      {/* Өглөгийн хязгаарлалт — тоо зохиохгүй, зөвхөн тайлбарлана */}
-      <Alert tone="info" className="mb-4" title="Өглөг / төлөх төлбөр одоогоор бүртгэгдэхгүй">
-        Худалдан авалт бүр бүртгэгдэх үедээ бүтэн төлөгдсөнөөр тооцогдож, мөнгөн гүйлгээ
-        үүсгэдэг. Төлсөн дүн, төлбөрийн хуваарь, эргэн төлөх хугацааны талбар байхгүй тул
-        үлдэгдэл өр, хугацаа хэтэрсэн төлбөрийг үнэн зөвөөр гаргах боломжгүй. Үүнийг
-        нэвтрүүлэхийн тулд нийлүүлэгчийн өглөгийн бүртгэлийг тусад нь хөгжүүлэх шаардлагатай.
-      </Alert>
+      {/* Нийлүүлэгчийн өглөг. Мөнгөн байр суурийг өрөөр нь тохируулж харуулна —
+          цэвэр ашиг БИШ. Ашгийн тооцоо огт өөрчлөгдөөгүй. */}
+      <PayablesSection
+        cash={data.balances.cash}
+        bank={data.balances.bank}
+        params={payableParams}
+      />
 
       <div className="mb-4 grid items-start gap-4 xl:grid-cols-3">
         <Card>

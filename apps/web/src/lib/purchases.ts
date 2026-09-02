@@ -9,7 +9,7 @@ import type { PurchasePaymentMethod } from "@prisma/client";
 export const PURCHASE_PAYMENT_LABEL: Record<PurchasePaymentMethod, string> = {
   CASH: "Бэлэн",
   BANK: "Банк",
-  CREDIT: "Зээлээр",
+  CREDIT: "Зээлээр / Дараа төлөх",
 };
 
 /**

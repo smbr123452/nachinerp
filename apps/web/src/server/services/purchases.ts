@@ -7,6 +7,11 @@ import { writeAudit } from "@/lib/audit";
 import { applyMovement, subjectOf, type StockSubject } from "./inventory";
 import { recordMoneyTransaction } from "./money";
 import { nextDocumentNumber } from "./numbering";
+import {
+  cancelPayableForPurchase,
+  createPayableForPurchase,
+  PayableStateError,
+} from "./payables";
 
 /** Prisma-ийн давхардлын алдаа (P2002) эсэхийг шалгана. */
 function isUniqueViolation(error: unknown): boolean {
@@ -57,6 +62,10 @@ export type PostPurchaseInput = {
    * байвал ШИНЭ баримт үүсэхгүй, өмнөх нь буцна.
    */
   idempotencyKey?: string | null;
+  /** Зээлээр авсан бол төлөх хугацаа. Заавал биш. */
+  dueDate?: Date | null;
+  /** Зээлийн нөхцөлийн тэмдэглэл. Заавал биш. */
+  creditNote?: string | null;
 };
 
 /**
@@ -76,6 +85,14 @@ export async function postPurchase(
 ): Promise<{ id: string; purchaseNo: string; created: boolean }> {
   if (input.items.length === 0) {
     throw new Error("Дор хаяж нэг мөр нэмнэ үү.");
+  }
+
+  // Зээлээр авахад нийлүүлэгч ЗААВАЛ — өглөг хэнд үүсэхийг мэдэхгүй бол
+  // тэр өр утгагүй. Гүйлгээ эхлэхээс өмнө зогсооно.
+  if (input.paymentMethod === "CREDIT" && !input.supplierId) {
+    throw new PayableStateError(
+      "Зээлээр худалдан авахад нийлүүлэгчийг заавал сонгоно — өглөг хэнд үүсэхийг тодорхойлно.",
+    );
   }
 
   // Аль хэдийн баталгаажсан эсэхийг гүйлгээнээс ӨМНӨ шалгана — давтан
@@ -245,6 +262,20 @@ async function postPurchaseTransaction(
       });
     }
 
+    // Зээлээр авсан бол мөнгө хөдлөхгүй — оронд нь өглөг үүснэ. Нэг
+    // худалдан авалтад ЯГ НЭГ өглөг (purchaseId unique).
+    if (input.paymentMethod === "CREDIT") {
+      await createPayableForPurchase(tx, {
+        purchaseId: purchase.id,
+        supplierId: input.supplierId ?? null,
+        totalAmount,
+        dueDate: input.dueDate ?? null,
+        note: input.creditNote ?? null,
+        userId: input.userId,
+        purchaseNo,
+      });
+    }
+
     // Баримтын зураг — файл нь хадгалалтад аль хэдийн бичигдсэн, энд
     // зөвхөн мета мөр. Гүйлгээ унавал энэ мөр ч үүсэхгүй.
     if (input.receipt) {
@@ -303,6 +334,17 @@ export async function cancelPurchase(params: {
     });
     if (!purchase) throw new Error("Худалдан авалт олдсонгүй.");
     if (purchase.status !== "POSTED") throw new Error("Зөвхөн батлагдсан баримтыг цуцална.");
+
+    // Өглөгийг ЭХЛЭЭД шалгана: төлбөр бүртгэгдсэн бол цуцлалт бүхэлдээ
+    // зогсоно — нөөц ч хөдлөхгүй, мөнгө ч буцахгүй. Нийлүүлэгчийн төлбөрийг
+    // чимээгүйхэн буцаахгүй; хэрэглэгч эхлээд төлбөрөө буцаана.
+    if (purchase.paymentMethod === "CREDIT") {
+      await cancelPayableForPurchase(tx, {
+        purchaseId: purchase.id,
+        userId: params.userId,
+        purchaseNo: purchase.purchaseNo,
+      });
+    }
 
     for (const item of purchase.items) {
       await applyMovement(tx, {

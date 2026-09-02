@@ -15,6 +15,14 @@ import {
   listSupplierItems,
 } from "@/server/services/suppliers";
 import { getSupplierItemPrices } from "@/server/services/supplier-history";
+import { getSupplierPayableSummary } from "@/server/services/payables";
+import { Badge } from "@/components/ui/Badge";
+import { formatMoney } from "@/lib/format";
+import {
+  PAYABLE_STATUS_LABEL,
+  PAYABLE_STATUS_TONE,
+  PAYMENT_ACCOUNT_LABEL,
+} from "@/lib/payables";
 import { deleteSupplierAction } from "../actions";
 import { EditSupplierButton } from "../SuppliersClient";
 import { ToggleSupplierActiveButton } from "./SupplierActions";
@@ -29,7 +37,7 @@ export default async function SupplierDetailPage({ params }: { params: Params })
   const supplier = await getSupplier(id);
   if (!supplier) notFound();
 
-  const [items, eligible, prices, usage, recentPurchases] = await Promise.all([
+  const [items, eligible, prices, usage, recentPurchases, payables] = await Promise.all([
     listSupplierItems(id),
     listEligibleItems(id),
     // Сүүлийн үнэ, огноо бүгд НЭГ асуулгаар — мөр бүрд тусад нь очихгүй.
@@ -41,6 +49,9 @@ export default async function SupplierDetailPage({ params }: { params: Params })
       take: 10,
       select: { id: true, purchaseNo: true, date: true, totalAmount: true },
     }),
+    // Өглөг нь бүртгэгдсэн төлбөрөөс тооцогдоно — нийлүүлэгч дээр тусад нь
+    // "баланс" талбар хадгалдаггүй.
+    getSupplierPayableSummary(id),
   ]);
 
   const itemViews: SupplierItemView[] = items.map((item) => {
@@ -60,6 +71,14 @@ export default async function SupplierDetailPage({ params }: { params: Params })
       lastPurchaseNo: price?.purchaseNo ?? null,
     };
   });
+
+  // Энэ нийлүүлэгчид хийсэн бүх төлбөр — буцаагдсаныг нь тэмдэглэж харуулна.
+  const supplierPayments = payables.payables
+    .flatMap((payable) =>
+      payable.payments.map((payment) => ({ ...payment, purchase: payable })),
+    )
+    .sort((a, b) => b.paidAt.getTime() - a.paidAt.getTime())
+    .slice(0, 10);
 
   const blockedReason =
     usage.length > 0
@@ -121,6 +140,151 @@ export default async function SupplierDetailPage({ params }: { params: Params })
 
       <Card className="mb-6">
         <SupplierItems supplierId={supplier.id} items={itemViews} eligible={eligible} />
+      </Card>
+
+      {/* Нийлүүлэгчийн өглөг. Төлбөрийг худалдан авалтын хуудаснаас бүртгэнэ —
+          нэг төлбөр нэг өглөгийг хаана. */}
+      <Card className="mb-6">
+        <CardHeader
+          title="Нийлүүлэгчийн өглөг"
+          description="Зээлээр авсан, төлөгдөөгүй үлдэгдэлтэй худалдан авалтууд."
+        />
+        <CardBody className="border-b border-ink-200">
+          <dl className="grid grid-cols-2 gap-x-4 gap-y-3 text-[13px] sm:grid-cols-4">
+            <div>
+              <dt className="text-ink-500">Нийт өглөг</dt>
+              <dd className="tabular text-base font-semibold text-ink-900">
+                {formatMoney(payables.totals.totalOutstanding)}
+              </dd>
+            </div>
+            <div>
+              <dt className="text-ink-500">Хугацаа хэтэрсэн өглөг</dt>
+              <dd
+                className={`tabular text-base font-semibold ${
+                  payables.totals.overdueOutstanding.greaterThan(0)
+                    ? "text-red-700"
+                    : "text-ink-900"
+                }`}
+              >
+                {formatMoney(payables.totals.overdueOutstanding)}
+              </dd>
+            </div>
+            <div>
+              <dt className="text-ink-500">Нээлттэй өглөг</dt>
+              <dd className="tabular text-base font-semibold text-ink-900">
+                {payables.totals.openCount}
+              </dd>
+            </div>
+            <div>
+              <dt className="text-ink-500">7 хоногт төлөх</dt>
+              <dd className="tabular text-base font-semibold text-ink-900">
+                {formatMoney(payables.totals.dueSoonOutstanding)}
+              </dd>
+            </div>
+          </dl>
+        </CardBody>
+        <Table>
+          <thead>
+            <tr>
+              <Th>Худалдан авалт</Th>
+              <Th>Огноо</Th>
+              <Th align="right">Анхны дүн</Th>
+              <Th align="right">Төлсөн</Th>
+              <Th align="right">Үлдэгдэл</Th>
+              <Th>Төлөх хугацаа</Th>
+              <Th>Төлөв</Th>
+            </tr>
+          </thead>
+          <tbody>
+            {payables.payables.length === 0 ? (
+              <EmptyRow colSpan={7}>Зээлээр авсан худалдан авалт алга байна.</EmptyRow>
+            ) : (
+              payables.payables.map((row) => (
+                <Tr key={row.id}>
+                  <Td>
+                    <TableLink href={`/purchases/${row.purchaseId}`}>{row.purchaseNo}</TableLink>
+                  </Td>
+                  <Td muted className="whitespace-nowrap">
+                    {formatDate(row.purchaseDate)}
+                  </Td>
+                  <Td align="right">{formatMoney(row.originalAmount)}</Td>
+                  <Td align="right" muted>
+                    {formatMoney(row.paid)}
+                  </Td>
+                  <Td align="right" className="font-medium text-ink-900">
+                    {formatMoney(row.outstanding)}
+                  </Td>
+                  <Td muted className="whitespace-nowrap">
+                    {row.dueDate ? formatDate(row.dueDate) : "Тодорхойгүй"}
+                  </Td>
+                  <Td>
+                    <Badge tone={PAYABLE_STATUS_TONE[row.status]} dot>
+                      {PAYABLE_STATUS_LABEL[row.status]}
+                    </Badge>
+                  </Td>
+                </Tr>
+              ))
+            )}
+          </tbody>
+        </Table>
+      </Card>
+
+      <Card className="mb-6">
+        <CardHeader
+          title="Өглөгийн төлбөрийн түүх"
+          description="Мөнгө гарсан бичилтүүд. Эдгээр нь шинэ зардал биш — өр барагдуулалт."
+        />
+        <Table>
+          <thead>
+            <tr>
+              <Th>Огноо</Th>
+              <Th>Худалдан авалт</Th>
+              <Th>Данс</Th>
+              <Th align="right">Дүн</Th>
+              <Th>Бүртгэсэн</Th>
+              <Th>Төлөв</Th>
+            </tr>
+          </thead>
+          <tbody>
+            {supplierPayments.length === 0 ? (
+              <EmptyRow colSpan={6}>Төлбөр бүртгэгдээгүй байна.</EmptyRow>
+            ) : (
+              supplierPayments.map((payment) => (
+                <Tr key={payment.id}>
+                  <Td muted className="whitespace-nowrap">
+                    {formatDate(payment.paidAt)}
+                  </Td>
+                  <Td>
+                    <TableLink href={`/purchases/${payment.purchase.purchaseId}`}>
+                      {payment.purchase.purchaseNo}
+                    </TableLink>
+                  </Td>
+                  <Td muted>{PAYMENT_ACCOUNT_LABEL[payment.account]}</Td>
+                  <Td
+                    align="right"
+                    className={
+                      payment.status === "REVERSED"
+                        ? "text-ink-400 line-through"
+                        : "font-medium text-ink-900"
+                    }
+                  >
+                    {formatMoney(payment.amount)}
+                  </Td>
+                  <Td muted>{payment.createdByName}</Td>
+                  <Td>
+                    {payment.status === "REVERSED" ? (
+                      <Badge tone="neutral">Буцаагдсан</Badge>
+                    ) : (
+                      <Badge tone="success" dot>
+                        Батлагдсан
+                      </Badge>
+                    )}
+                  </Td>
+                </Tr>
+              ))
+            )}
+          </tbody>
+        </Table>
       </Card>
 
       <Card>

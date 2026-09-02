@@ -40,6 +40,8 @@ export async function createPurchaseAction(_prev: ActionState, formData: FormDat
       paymentMethod: formData.get("paymentMethod"),
       note: formData.get("note"),
       items: rows,
+      dueDate: formData.get("dueDate") ?? undefined,
+      creditNote: formData.get("creditNote"),
     });
     if (!parsed.success) return fail("Мэдээллээ шалгана уу.", fieldErrors(parsed.error));
 
@@ -88,6 +90,8 @@ export async function createPurchaseAction(_prev: ActionState, formData: FormDat
       ipAddress: await getClientIp(),
       receipt,
       idempotencyKey,
+      dueDate: parsed.data.dueDate ? parseDateInput(parsed.data.dueDate) : null,
+      creditNote: parsed.data.creditNote,
     });
     purchaseId = purchase.id;
     if (purchase.created) {

@@ -4,6 +4,7 @@ import { UnitConversionError } from "@/lib/units";
 import { InsufficientStockError } from "@/server/services/inventory";
 import { MissingRecipeError, SaleStockShortageError } from "@/server/services/sales";
 import { WriteOffStateError } from "@/server/services/write-offs";
+import { PayableStateError } from "@/server/services/payables";
 import { fail, type ActionState } from "@/lib/action-state";
 
 export { IDLE, ok, fail, type ActionState } from "@/lib/action-state";
@@ -16,6 +17,7 @@ const KNOWN_ERRORS = [
   MissingRecipeError,
   UnitConversionError,
   WriteOffStateError,
+  PayableStateError,
 ];
 
 /**

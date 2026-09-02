@@ -47,6 +47,10 @@ export type AuditAction =
   | "WRITE_OFF_DELETED"
   | "WRITE_OFF_POSTED"
   | "WRITE_OFF_REVERSED"
+  | "SUPPLIER_PAYABLE_CREATED"
+  | "SUPPLIER_PAYABLE_CANCELLED"
+  | "SUPPLIER_PAYMENT_RECORDED"
+  | "SUPPLIER_PAYMENT_REVERSED"
   | "MANUAL_ADJUSTMENT"
   | "BANK_DEPOSIT"
   | "MONEY_ADJUSTMENT"
@@ -110,6 +114,10 @@ export const AUDIT_ACTION_LABEL: Record<string, string> = {
   WRITE_OFF_DELETED: "Ноорог акт устгасан",
   WRITE_OFF_POSTED: "Акт баталсан",
   WRITE_OFF_REVERSED: "Акт буцаасан",
+  SUPPLIER_PAYABLE_CREATED: "Нийлүүлэгчийн өглөг үүссэн",
+  SUPPLIER_PAYABLE_CANCELLED: "Нийлүүлэгчийн өглөг цуцлагдсан",
+  SUPPLIER_PAYMENT_RECORDED: "Нийлүүлэгчид төлбөр хийсэн",
+  SUPPLIER_PAYMENT_REVERSED: "Нийлүүлэгчийн төлбөр буцаасан",
   MANUAL_ADJUSTMENT: "Гар тохируулга хийсэн",
   BANK_DEPOSIT: "Банкинд тушаасан",
   MONEY_ADJUSTMENT: "Мөнгөн тохируулга хийсэн",

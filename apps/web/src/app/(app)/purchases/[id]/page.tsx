@@ -13,8 +13,12 @@ import { subjectDisplay } from "@/lib/stock-subject";
 import { MOVEMENT_TYPE_LABEL } from "@/lib/movements";
 import { PURCHASE_PAYMENT_LABEL, PURCHASE_STATUS_LABEL } from "@/lib/purchases";
 import { listPurchaseAttachments } from "@/server/services/attachments";
+import { getPayableForPurchase, toClientPayable } from "@/server/services/payables";
+import { PayablePanel } from "@/components/payables/PayablePanel";
+import { localDayKey } from "@/lib/dates";
 import { ReceiptViewer } from "./ReceiptViewer";
 import { cancelPurchaseAction } from "../actions";
+import { recordSupplierPaymentAction, reverseSupplierPaymentAction } from "../payable-actions";
 
 /** Худалдан авалтын төлөвийн өнгө. Нийтлэг StatusBadge-ийг хөндөөгүй. */
 const STATUS_TONE: Record<string, "success" | "neutral" | "danger"> = {
@@ -27,7 +31,7 @@ const STATUS_TONE: Record<string, "success" | "neutral" | "danger"> = {
 type Params = Promise<{ id: string }>;
 
 export default async function PurchaseDetailPage({ params }: { params: Params }) {
-  await requirePageUser();
+  const user = await requirePageUser();
   const { id } = await params;
 
   const purchase = await prisma.purchase.findUnique({
@@ -41,6 +45,9 @@ export default async function PurchaseDetailPage({ params }: { params: Params })
   if (!purchase) notFound();
 
   const attachments = await listPurchaseAttachments(purchase.id);
+
+  // Зээлээр авсан бол өглөг. Бэлэн/банкаар бол null — хэсэг харагдахгүй.
+  const payable = await getPayableForPurchase(purchase.id);
 
   const movements = await prisma.inventoryMovement.findMany({
     where: { referenceId: purchase.id, referenceType: { in: ["PURCHASE", "PURCHASE_CANCEL"] } },
@@ -134,6 +141,18 @@ export default async function PurchaseDetailPage({ params }: { params: Params })
           </tbody>
         </Table>
       </Card>
+
+      {/* Зээлийн нөхцөл ба төлбөр. Төлбөр нь ЗАРДАЛ БИШ — нөөц, өртөг,
+          ашгийн үзүүлэлт огт хөндөгдөхгүй. */}
+      {payable ? (
+        <PayablePanel
+          payable={toClientPayable(payable)}
+          today={localDayKey(new Date())}
+          canReverse={user.role === "OWNER"}
+          payAction={recordSupplierPaymentAction}
+          reverseAction={reverseSupplierPaymentAction}
+        />
+      ) : null}
 
       <Card className="mb-6">
         <CardHeader

@@ -129,13 +129,24 @@ export const purchaseLineSchema = z
     };
   });
 
-export const purchaseSchema = z.object({
-  date: dateInput,
-  supplierId: z.string().optional().transform((v) => (v ? v : undefined)),
-  paymentMethod: z.nativeEnum(PurchasePaymentMethod),
-  note: optionalText,
-  items: z.array(purchaseLineSchema).min(1, "Дор хаяж нэг мөр нэмнэ үү."),
-});
+export const purchaseSchema = z
+  .object({
+    date: dateInput,
+    supplierId: z.string().optional().transform((v) => (v ? v : undefined)),
+    paymentMethod: z.nativeEnum(PurchasePaymentMethod),
+    note: optionalText,
+    items: z.array(purchaseLineSchema).min(1, "Дор хаяж нэг мөр нэмнэ үү."),
+    /** Зээлээр авсан бол төлөх хугацаа. Заавал биш. */
+    dueDate: dateInput.optional().or(z.literal("").transform(() => undefined)),
+    /** Зээлийн нөхцөлийн тэмдэглэл. Заавал биш. */
+    creditNote: optionalText,
+  })
+  // Зээлээр авахад нийлүүлэгч ЗААВАЛ — өглөг хэнд үүсэхийг мэдэхгүй бол
+  // тэр өр утгагүй. Серверийн давхарга ч мөн адил шалгана.
+  .refine((v) => v.paymentMethod !== "CREDIT" || Boolean(v.supplierId), {
+    message: "Зээлээр авахад нийлүүлэгчийг заавал сонгоно.",
+    path: ["supplierId"],
+  });
 
 export const supplierSchema = z.object({
   name: requiredText("Нэр", 150),
@@ -305,3 +316,21 @@ export const writeOffSchema = z
     message: '"Бусад" шалтгаан сонгосон бол тайлбар бичнэ үү.',
     path: ["note"],
   });
+
+// --- Нийлүүлэгчийн өглөг --------------------------------------------------
+
+export const PAYABLE_STATUS_FILTER_VALUES = ["UNPAID", "PARTIAL", "PAID", "OVERDUE"] as const;
+
+export const supplierPaymentSchema = z.object({
+  payableId: z.string().min(1),
+  amount: positiveAmount,
+  account: z.nativeEnum(Account),
+  paidAt: dateInput,
+  note: optionalText,
+  reference: optionalText,
+});
+
+export const reversePaymentSchema = z.object({
+  paymentId: z.string().min(1),
+  note: requiredText("Шалтгаан"),
+});

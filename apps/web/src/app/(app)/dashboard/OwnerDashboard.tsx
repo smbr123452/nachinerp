@@ -31,6 +31,7 @@ import {
   RANGE_LABEL,
   type RangeKey,
 } from "@/server/services/dashboard";
+import { PayablesTiles } from "./PayablesTiles";
 import { AlertList, ComparisonHint, MoreLink, StockSeverityBadge } from "./shared";
 
 const METRICS = {
@@ -183,6 +184,9 @@ export async function OwnerDashboard({
           icon={<Warehouse />}
         />
       </section>
+
+      {/* Нийлүүлэгчийн өглөг — зөвхөн эзэн. Өглөг байхгүй бол огт харагдахгүй. */}
+      <PayablesTiles />
 
       {/* Анхаарах зүйлс */}
       {data.alerts.length > 0 ? (
