@@ -36,17 +36,23 @@ export const PAYMENT_ACCOUNT_LABEL: Record<Account, string> = {
   BANK: "Банк",
 };
 
-/** Клиент рүү дамжуулах хэлбэр — Decimal, Date хоёулаа энгийн утга болно. */
+/**
+ * Клиент рүү дамжуулах хэлбэр — Decimal, Date хоёулаа энгийн утга болно.
+ *
+ * Огноог СЕРВЕР дээр шошго болгож бэлдэнэ: клиент талд дахин хөрвүүлбэл
+ * хөтчийн locale өгөгдлөөс шалтгаалж сервертэй зөрж, hydration алдаа өгнө.
+ */
 export type ClientPayment = {
   id: string;
   amount: number;
   account: Account;
-  paidAt: string;
+  /** Дэлгэцэд харуулах бэлэн шошго (сервер талд бэлдсэн). */
+  paidAtLabel: string;
   note: string | null;
   reference: string | null;
   status: "POSTED" | "REVERSED";
   createdByName: string;
-  reversedAt: string | null;
+  reversedAtLabel: string | null;
   reversedByName: string | null;
   reversalNote: string | null;
 };
@@ -60,8 +66,10 @@ export type ClientPayable = {
   originalAmount: number;
   paid: number;
   outstanding: number;
-  /** YYYY-MM-DD эсвэл null ("Тодорхойгүй"). */
+  /** YYYY-MM-DD эсвэл null. */
   dueDate: string | null;
+  /** Дэлгэцэд харуулах шошго, эсвэл null ("Тодорхойгүй"). */
+  dueDateLabel: string | null;
   note: string | null;
   status: PayableStatus;
   /** Худалдан авалт цуцлагдсан бол өглөг ч хаагдсан. */

@@ -4,6 +4,7 @@ import { d, money, ZERO, type Dec } from "@/lib/decimal";
 import { prisma, type Tx } from "@/lib/prisma";
 import { writeAudit } from "@/lib/audit";
 import { localDayKey, startOfLocalDay } from "@/lib/dates";
+import { formatDate, formatDateTime } from "@/lib/format";
 import type { ClientPayable, PayableStatus } from "@/lib/payables";
 import { recordMoneyTransaction } from "./money";
 
@@ -707,6 +708,7 @@ export function toClientPayable(view: PayableView): ClientPayable {
     paid: view.paid.toNumber(),
     outstanding: view.outstanding.toNumber(),
     dueDate: view.dueDate ? localDayKey(view.dueDate) : null,
+    dueDateLabel: view.dueDate ? formatDate(view.dueDate) : null,
     note: view.note,
     status: view.status,
     cancelled: view.docStatus !== "POSTED" || view.purchaseStatus !== "POSTED",
@@ -714,12 +716,12 @@ export function toClientPayable(view: PayableView): ClientPayable {
       id: p.id,
       amount: p.amount.toNumber(),
       account: p.account,
-      paidAt: p.paidAt.toISOString(),
+      paidAtLabel: formatDate(p.paidAt),
       note: p.note,
       reference: p.reference,
       status: p.status === "REVERSED" ? "REVERSED" : "POSTED",
       createdByName: p.createdByName,
-      reversedAt: p.reversedAt ? p.reversedAt.toISOString() : null,
+      reversedAtLabel: p.reversedAt ? formatDateTime(p.reversedAt) : null,
       reversedByName: p.reversedByName,
       reversalNote: p.reversalNote,
     })),

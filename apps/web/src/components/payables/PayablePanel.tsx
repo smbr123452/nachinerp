@@ -9,7 +9,7 @@ import { Field, FieldGrid, Input, NumberInput, Select, Textarea } from "@/compon
 import { Modal, ModalActions } from "@/components/ui/Modal";
 import { Table, Td, Th, Tr } from "@/components/ui/Table";
 import { IDLE, type ActionState } from "@/lib/action-state";
-import { formatDate, formatDateTime, formatMoney } from "@/lib/format";
+import { formatMoney } from "@/lib/format";
 import {
   PAYABLE_STATUS_LABEL,
   PAYABLE_STATUS_TONE,
@@ -81,7 +81,7 @@ export function PayablePanel({
           <div>
             <dt className="text-ink-500">Төлөх хугацаа</dt>
             <dd className="font-medium text-ink-900">
-              {payable.dueDate ? formatDate(payable.dueDate) : "Тодорхойгүй"}
+              {payable.dueDateLabel ?? "Тодорхойгүй"}
             </dd>
           </div>
           <div>
@@ -121,7 +121,7 @@ export function PayablePanel({
           <tbody>
             {payable.payments.map((payment) => (
               <Tr key={payment.id}>
-                <Td className="whitespace-nowrap">{formatDate(payment.paidAt)}</Td>
+                <Td className="whitespace-nowrap">{payment.paidAtLabel}</Td>
                 <Td>{PAYMENT_ACCOUNT_LABEL[payment.account]}</Td>
                 <Td
                   align="right"
@@ -142,7 +142,7 @@ export function PayablePanel({
                     <span className="text-[13px] text-ink-500">
                       Буцаагдсан
                       {payment.reversedByName ? ` · ${payment.reversedByName}` : ""}
-                      {payment.reversedAt ? ` · ${formatDateTime(payment.reversedAt)}` : ""}
+                      {payment.reversedAtLabel ? ` · ${payment.reversedAtLabel}` : ""}
                     </span>
                   ) : (
                     <Badge tone="success" dot>
