@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useEffect, useMemo, useState } from "react";
+import { useActionState, useCallback, useEffect, useMemo, useState } from "react";
 import { Plus, Trash2 } from "lucide-react";
 import { Alert } from "@/components/ui/Alert";
 import { Badge } from "@/components/ui/Badge";
@@ -54,6 +54,8 @@ export function SupplierItems({
   eligible: EligibleItem[];
 }) {
   const [adding, setAdding] = useState(false);
+  // Тогтвортой лавлагаа — эффектийн хамаарал бүр render-д өөрчлөгдөхгүй.
+  const closeAdd = useCallback(() => setAdding(false), []);
 
   return (
     <>
@@ -83,7 +85,10 @@ export function SupplierItems({
             <Th>Төрөл</Th>
             <Th align="right">Сүүлийн авсан үнэ</Th>
             <Th>Сүүлийн авсан огноо</Th>
-            <Th align="right" />
+            {/* Үйлдлийн багана нь хүснэгт хэвтээ гүйхэд ч баруун ирмэгт
+                наалдаж, ҮРГЭЛЖ харагдана. Нарийн дэлгэц эсвэл томруулсан
+                хөтөч дээр товч харагдахгүй болох асуудлыг зогсооно. */}
+            <Th align="right" className="sticky right-0 z-10 bg-ink-50" />
           </tr>
         </thead>
         <tbody>
@@ -122,7 +127,7 @@ export function SupplierItems({
                     "—"
                   )}
                 </Td>
-                <Td align="right">
+                <Td align="right" className="sticky right-0 z-10 bg-white">
                   <RemoveItemButton item={item} />
                 </Td>
               </Tr>
@@ -131,38 +136,43 @@ export function SupplierItems({
         </tbody>
       </Table>
 
-      <AddItemModal
+      {/* Формыг Modal-ын ДОТОР байрлуулна: хаагдахад бүрэлдэхүүн хэсэг нь
+          салж, useActionState нь IDLE рүү шинэчлэгддэг. Modal-ыг гаднаас нь
+          боож байвал өмнөх амжилтын төлөв наалдаж, дахин нээхэд шууд хаагдана. */}
+      <Modal
         open={adding}
-        onClose={() => setAdding(false)}
-        supplierId={supplierId}
-        eligible={eligible}
-      />
+        onClose={closeAdd}
+        title="Бараа нэмэх"
+        description="Зөвхөн идэвхтэй түүхий эд ба бэлэн бүтээгдэхүүн сонгогдоно. Тоо хэмжээ, үнэ шаардлагагүй."
+      >
+        <AddItemForm supplierId={supplierId} eligible={eligible} onDone={closeAdd} />
+      </Modal>
     </>
   );
 }
 
-function AddItemModal({
-  open,
-  onClose,
+/**
+ * Бараа холбох форм.
+ *
+ * Modal-ын ДОТОР render хийгддэг тул хаагдахад бүхэлдээ салж, дараагийн
+ * удаа шинэ, цэвэр төлөвтэйгээр нээгдэнэ.
+ */
+function AddItemForm({
   supplierId,
   eligible,
+  onDone,
 }: {
-  open: boolean;
-  onClose: () => void;
   supplierId: string;
   eligible: EligibleItem[];
+  onDone: () => void;
 }) {
   const [state, formAction] = useActionState<ActionState, FormData>(addSupplierItemAction, IDLE);
   const [query, setQuery] = useState("");
   const [selected, setSelected] = useState("");
 
   useEffect(() => {
-    if (state.status === "success") {
-      setQuery("");
-      setSelected("");
-      onClose();
-    }
-  }, [state, onClose]);
+    if (state.status === "success") onDone();
+  }, [state, onDone]);
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -176,70 +186,63 @@ function AddItemModal({
   const products = filtered.filter((i) => i.kind === "product");
 
   return (
-    <Modal
-      open={open}
-      onClose={onClose}
-      title="Бараа нэмэх"
-      description="Зөвхөн идэвхтэй түүхий эд ба бэлэн бүтээгдэхүүн сонгогдоно. Тоо хэмжээ, үнэ шаардлагагүй."
-    >
-      <form action={formAction} className="space-y-4">
-        <input type="hidden" name="supplierId" value={supplierId} />
-        {state.status === "error" && state.message ? (
-          <Alert tone="error">{state.message}</Alert>
-        ) : null}
+    <form action={formAction} className="space-y-4">
+      <input type="hidden" name="supplierId" value={supplierId} />
+      {state.status === "error" && state.message ? (
+        <Alert tone="error">{state.message}</Alert>
+      ) : null}
 
-        <Field label="Хайх" htmlFor="item-search">
-          <Input
-            id="item-search"
-            value={query}
-            onChange={(event) => setQuery(event.target.value)}
-            placeholder="Нэр эсвэл код"
-          />
-        </Field>
+      <Field label="Хайх" htmlFor="item-search">
+        <Input
+          id="item-search"
+          value={query}
+          onChange={(event) => setQuery(event.target.value)}
+          placeholder="Нэр эсвэл код"
+        />
+      </Field>
 
-        <Field label="Бараа" htmlFor="itemKey" required>
-          <Select
-            id="itemKey"
-            name="itemKey"
-            required
-            value={selected}
-            onChange={(event) => setSelected(event.target.value)}
-            size={Math.min(10, Math.max(4, filtered.length + 2))}
-          >
-            <option value="">— Сонгох —</option>
-            {materials.length > 0 ? (
-              <optgroup label="Түүхий эд">
-                {materials.map((item) => (
-                  <option key={item.key} value={item.key}>
-                    {item.name} ({item.sku})
-                  </option>
-                ))}
-              </optgroup>
-            ) : null}
-            {products.length > 0 ? (
-              <optgroup label="Бэлэн бүтээгдэхүүн">
-                {products.map((item) => (
-                  <option key={item.key} value={item.key}>
-                    {item.name} ({item.sku})
-                  </option>
-                ))}
-              </optgroup>
-            ) : null}
-          </Select>
-        </Field>
+      <Field label="Бараа" htmlFor="itemKey" required>
+        <Select
+          id="itemKey"
+          name="itemKey"
+          required
+          value={selected}
+          onChange={(event) => setSelected(event.target.value)}
+          size={Math.min(10, Math.max(4, filtered.length + 2))}
+        >
+          <option value="">— Сонгох —</option>
+          {materials.length > 0 ? (
+            <optgroup label="Түүхий эд">
+              {materials.map((item) => (
+                <option key={item.key} value={item.key}>
+                  {item.name} ({item.sku})
+                </option>
+              ))}
+            </optgroup>
+          ) : null}
+          {products.length > 0 ? (
+            <optgroup label="Бэлэн бүтээгдэхүүн">
+              {products.map((item) => (
+                <option key={item.key} value={item.key}>
+                  {item.name} ({item.sku})
+                </option>
+              ))}
+            </optgroup>
+          ) : null}
+        </Select>
+      </Field>
 
-        {filtered.length === 0 ? (
-          <p className="text-[13px] text-ink-500">Хайлтад тохирох бараа алга байна.</p>
-        ) : null}
+      {filtered.length === 0 ? (
+        <p className="text-[13px] text-ink-500">Хайлтад тохирох бараа алга байна.</p>
+      ) : null}
 
-        <ModalActions>
-          <Button variant="secondary" onClick={onClose}>
-            Болих
-          </Button>
-          <SubmitButton disabled={!selected}>Нэмэх</SubmitButton>
-        </ModalActions>
-      </form>
-    </Modal>
+      <ModalActions>
+        <Button variant="secondary" onClick={onDone}>
+          Болих
+        </Button>
+        <SubmitButton disabled={!selected}>Нэмэх</SubmitButton>
+      </ModalActions>
+    </form>
   );
 }
 
