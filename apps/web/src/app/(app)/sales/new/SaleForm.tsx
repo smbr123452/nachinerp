@@ -5,7 +5,8 @@ import { Plus, Trash2, Wand2 } from "lucide-react";
 import { Alert } from "@/components/ui/Alert";
 import { Button, SubmitButton } from "@/components/ui/Button";
 import { Card, CardBody, CardFooter, CardHeader } from "@/components/ui/Card";
-import { Checkbox, Field, FieldGrid, Input, NumberInput, Select } from "@/components/ui/Field";
+import { Checkbox, Field, FieldGrid, Input, NumberInput } from "@/components/ui/Field";
+import { SearchableCombobox, type ComboboxOption } from "@/components/ui/SearchableCombobox";
 import { SummaryPanel } from "@/components/ui/SummaryPanel";
 import { Table, Td, Th, TotalRow, Tr } from "@/components/ui/Table";
 import { IDLE, type ActionState } from "@/lib/action-state";
@@ -62,6 +63,19 @@ export function SaleForm({
   );
 
   const productById = useMemo(() => new Map(products.map((p) => [p.id, p])), [products]);
+  // Сонгох боломжтой бүтээгдэхүүний хүрээ ХЭВЭЭР — `products` prop нь
+  // сервер талаас өмнөх шигээ ирнэ (идэвхтэй бүх бүтээгдэхүүн).
+  const productOptions: ComboboxOption[] = useMemo(
+    () =>
+      products.map((product) => ({
+        value: product.id,
+        label: product.name,
+        secondary: product.sku,
+        badge: product.productType === "RESALE" ? "Бэлэн бүтээгдэхүүн" : "Үйлдвэрлэдэг",
+      })),
+    [products],
+  );
+
   const stockByKey = useMemo(() => new Map(materials.map((m) => [m.key, m])), [materials]);
 
   // Сөрөг үлдэгдлийн зөвшөөрөл нь REACT-ийн ТӨЛӨВ. Урьд нь энэ нь формын
@@ -166,18 +180,15 @@ export function SaleForm({
             {rows.map((row, index) => (
               <Tr key={index}>
                 <Td>
-                  <Select
+                  <SearchableCombobox
                     name={`items[${index}][productId]`}
                     value={row.productId}
-                    onChange={(event) => onProductChange(index, event.target.value)}
-                  >
-                    <option value="">— Сонгох —</option>
-                    {products.map((product) => (
-                      <option key={product.id} value={product.id}>
-                        {product.name} ({product.sku})
-                      </option>
-                    ))}
-                  </Select>
+                    onChange={(next) => onProductChange(index, next)}
+                    options={productOptions}
+                    placeholder="Бүтээгдэхүүн хайх эсвэл сонгох..."
+                    searchPlaceholder="Нэр эсвэл код..."
+                    emptyMessage="Бүтээгдэхүүн олдсонгүй."
+                  />
                 </Td>
                 <Td align="right">
                   <NumberInput

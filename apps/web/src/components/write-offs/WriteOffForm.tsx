@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/Button";
 import { Card, CardBody, CardHeader } from "@/components/ui/Card";
 import { Alert } from "@/components/ui/Alert";
 import { Field, FieldGrid, Input, NumberInput, Select, Textarea } from "@/components/ui/Field";
+import { SearchableCombobox, type ComboboxOption } from "@/components/ui/SearchableCombobox";
 import { IDLE, type ActionState } from "@/lib/action-state";
 import { formatMoney, formatQty } from "@/lib/format";
 import { unitLabel } from "@/lib/units";
@@ -54,6 +55,21 @@ export function WriteOffForm({
 
   /** Аль хэдийн сонгогдсон барааг дахин сонгуулахгүй — давхардал төөрөгдүүлнэ. */
   const chosen = new Set(rows.map((r) => r.subject).filter(Boolean));
+
+  /**
+   * Тухайн мөрийн сонголтууд. Хүрээний шүүлт ӨӨРЧЛӨГДӨӨГҮЙ — `candidates` нь
+   * сервер талаас хүрээгээрээ шүүгдэж ирнэ. Энд зөвхөн өөр мөрөнд сонгогдсон
+   * барааг нуух хуучин дүрэм хэвээр үлдэнэ.
+   */
+  const optionsFor = (current: string): ComboboxOption[] =>
+    candidates
+      .filter((c) => `${c.kind}:${c.id}` === current || !chosen.has(`${c.kind}:${c.id}`))
+      .map((c) => ({
+        value: `${c.kind}:${c.id}`,
+        label: c.name,
+        secondary: c.sku,
+        meta: `${formatQty(c.quantity)} ${unitLabel(c.unit as never)}`,
+      }));
 
   const lines = rows
     .map((row) => {
@@ -156,25 +172,16 @@ export function WriteOffForm({
                 >
                   <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_130px_auto] sm:items-end">
                     <Field label="Бараа" htmlFor={`subject-${index}`}>
-                      <Select
+                      <SearchableCombobox
                         id={`subject-${index}`}
                         name={`lines[${index}][subject]`}
                         value={row.subject}
-                        onChange={(e) => update(index, { subject: e.target.value })}
-                      >
-                        <option value="">— сонгох —</option>
-                        {candidates
-                          .filter((c) => `${c.kind}:${c.id}` === row.subject || !chosen.has(`${c.kind}:${c.id}`))
-                          .map((c) => {
-                            const key = `${c.kind}:${c.id}`;
-                            return (
-                              <option key={key} value={key}>
-                                {c.name} · үлдэгдэл {formatQty(c.quantity)}{" "}
-                                {unitLabel(c.unit as never)}
-                              </option>
-                            );
-                          })}
-                      </Select>
+                        onChange={(next) => update(index, { subject: next })}
+                        options={optionsFor(row.subject)}
+                        placeholder="Бараа хайх эсвэл сонгох..."
+                        searchPlaceholder="Нэр эсвэл код..."
+                        emptyMessage="Бараа олдсонгүй."
+                      />
                     </Field>
 
                     <Field label="Тоо хэмжээ" htmlFor={`quantity-${index}`}>

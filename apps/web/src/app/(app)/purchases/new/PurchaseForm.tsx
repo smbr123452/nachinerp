@@ -6,6 +6,7 @@ import { Plus, Trash2 } from "lucide-react";
 import { Alert } from "@/components/ui/Alert";
 import { Button, SubmitButton } from "@/components/ui/Button";
 import { Field, FieldGrid, Input, NumberInput, Select } from "@/components/ui/Field";
+import { SearchableCombobox, type ComboboxOption } from "@/components/ui/SearchableCombobox";
 import { Card, CardBody, CardFooter, CardHeader } from "@/components/ui/Card";
 import { SummaryPanel } from "@/components/ui/SummaryPanel";
 import { Table, Td, Th, TotalRow, Tr } from "@/components/ui/Table";
@@ -58,7 +59,7 @@ export function PurchaseForm({
   today,
 }: {
   items: ItemOption[];
-  suppliers: { id: string; name: string }[];
+  suppliers: { id: string; name: string; phone?: string | null }[];
   today: string;
 }) {
   const [rows, setRows] = useState<Row[]>([{ ...EMPTY_ROW }]);
@@ -93,6 +94,39 @@ export function PurchaseForm({
 
   const materials = useMemo(() => items.filter((i) => i.kind === "rawMaterial"), [items]);
   const products = useMemo(() => items.filter((i) => i.kind === "product"), [items]);
+
+  // Сонгох боломжтой барааны хүрээ ХЭВЭЭР: түүхий эд ба бэлэн бүтээгдэхүүн.
+  // `items` нь сервер талаас ижилхэн ирж байгаа — зөвхөн харагдац өөрчлөгдөв.
+  const itemOptions: ComboboxOption[] = useMemo(
+    () => [
+      ...materials.map((item) => ({
+        value: item.key,
+        label: item.name,
+        secondary: item.sku,
+        group: "Түүхий эд",
+        badge: "Түүхий эд",
+      })),
+      ...products.map((item) => ({
+        value: item.key,
+        label: item.name,
+        secondary: item.sku,
+        group: "Бэлэн бүтээгдэхүүн",
+        badge: "Бэлэн бүтээгдэхүүн",
+      })),
+    ],
+    [materials, products],
+  );
+
+  const supplierOptions: ComboboxOption[] = useMemo(
+    () =>
+      supplierList.map((supplier) => ({
+        value: supplier.id,
+        label: supplier.name,
+        secondary: supplier.phone ? `Утас: ${supplier.phone}` : undefined,
+        keywords: supplier.phone ? [supplier.phone] : undefined,
+      })),
+    [supplierList],
+  );
 
   const update = (index: number, patch: Partial<Row>) =>
     setRows((current) => current.map((row, i) => (i === index ? { ...row, ...patch } : row)));
@@ -229,20 +263,17 @@ export function PurchaseForm({
               hint="Сонгоход эндээс авдаг бараа санал болгоно."
             >
               <div className="flex flex-wrap items-center gap-2">
-                <Select
+                <SearchableCombobox
                   id="supplierId"
                   name="supplierId"
                   value={supplierId}
-                  onChange={(event) => onSupplierChange(event.target.value)}
+                  onChange={onSupplierChange}
+                  options={supplierOptions}
+                  placeholder="Нийлүүлэгч хайх эсвэл сонгох..."
+                  searchPlaceholder="Нэр эсвэл утас..."
+                  emptyMessage="Нийлүүлэгч олдсонгүй."
                   className="min-w-0 flex-1"
-                >
-                  <option value="">— Сонгоогүй —</option>
-                  {supplierList.map((supplier) => (
-                    <option key={supplier.id} value={supplier.id}>
-                      {supplier.name}
-                    </option>
-                  ))}
-                </Select>
+                />
                 {/* Шинэ нийлүүлэгчийг ЭНД, хуудсаа орхилгүй үүсгэнэ —
                     оруулсан мөр, үнэ, төлбөр бүгд хэвээр үлдэнэ. */}
                 <Button
@@ -351,31 +382,16 @@ export function PurchaseForm({
               return (
                 <Tr key={index}>
                   <Td>
-                    <Select
+                    <SearchableCombobox
                       name={`items[${index}][itemKey]`}
                       value={row.itemKey}
-                      onChange={(event) => onItemChange(index, event.target.value)}
-                    >
-                      <option value="">— Сонгох —</option>
-                      {materials.length > 0 ? (
-                        <optgroup label="Түүхий эд">
-                          {materials.map((item) => (
-                            <option key={item.key} value={item.key}>
-                              {item.name} ({item.sku})
-                            </option>
-                          ))}
-                        </optgroup>
-                      ) : null}
-                      {products.length > 0 ? (
-                        <optgroup label="Бэлэн бүтээгдэхүүн">
-                          {products.map((item) => (
-                            <option key={item.key} value={item.key}>
-                              {item.name} ({item.sku})
-                            </option>
-                          ))}
-                        </optgroup>
-                      ) : null}
-                    </Select>
+                      onChange={(next) => onItemChange(index, next)}
+                      options={itemOptions}
+                      placeholder="Бараа хайх эсвэл сонгох..."
+                      searchPlaceholder="Нэр эсвэл код..."
+                      emptyMessage="Бараа олдсонгүй."
+                      aria-labelledby="purchase-item-header"
+                    />
                   </Td>
                   <Td align="right">
                     <NumberInput

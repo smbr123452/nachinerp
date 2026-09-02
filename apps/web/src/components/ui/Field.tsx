@@ -8,13 +8,13 @@ import { ChevronDown } from "lucide-react";
 import { cn } from "@/lib/cn";
 
 /** Бүх оролтын нэгдсэн хэв маяг — ижил өндөр, ижил фокус. */
-const CONTROL =
+export const CONTROL =
   "block w-full rounded-lg border border-ink-300 bg-white text-sm text-ink-900 shadow-sm " +
   "transition-colors placeholder:text-ink-400 " +
   "hover:border-ink-400 focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/20 " +
   "disabled:cursor-not-allowed disabled:border-ink-200 disabled:bg-ink-50 disabled:text-ink-400";
 
-const CONTROL_HEIGHT = "h-9 px-3";
+export const CONTROL_HEIGHT = "h-9 px-3";
 
 export function Field({
   label,
