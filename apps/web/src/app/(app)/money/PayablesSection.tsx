@@ -178,7 +178,7 @@ export async function PayablesSection({
                   <Td align="right">
                     <Link
                       href={`/purchases/${row.purchaseId}`}
-                      className="text-[13px] font-medium text-brand-600 hover:underline"
+                      className="text-body font-medium text-brand-600 hover:underline"
                     >
                       {row.outstanding.greaterThan(0) ? "Төлбөр хийх" : "Дэлгэрэнгүй"}
                     </Link>

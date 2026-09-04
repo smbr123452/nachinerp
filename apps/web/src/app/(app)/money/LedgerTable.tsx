@@ -93,7 +93,7 @@ export function LedgerTable({ rows, emptyText }: { rows: LedgerRow[]; emptyText?
                 </Td>
                 <Td>
                   {isTransfer ? (
-                    <span className="flex items-center gap-1 whitespace-nowrap text-[12px] text-ink-600">
+                    <span className="flex items-center gap-1 whitespace-nowrap text-caption text-ink-600">
                       {ACCOUNT_LABEL[row.sourceAccount!]}
                       <span aria-hidden className="text-ink-400">
                         →

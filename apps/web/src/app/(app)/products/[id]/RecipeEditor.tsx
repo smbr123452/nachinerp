@@ -170,7 +170,7 @@ export function RecipeEditor({
         </Button>
 
         <div className="flex flex-wrap items-center gap-x-8 gap-y-3">
-          <dl className="flex flex-wrap gap-x-8 gap-y-2 text-[13px]">
+          <dl className="flex flex-wrap gap-x-8 gap-y-2 text-body">
             <div>
               <dt className="text-ink-500">Жорын өртөг</dt>
               <dd className="tabular font-semibold text-ink-900">{formatMoney(totalCost)}</dd>

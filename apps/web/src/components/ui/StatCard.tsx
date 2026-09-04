@@ -49,7 +49,7 @@ export function StatCard({
       )}
     >
       <div className="flex items-start justify-between gap-3">
-        <p className="text-[13px] font-medium leading-5 text-ink-500">{label}</p>
+        <p className="text-body font-medium leading-5 text-ink-500">{label}</p>
         {icon ? (
           <span
             aria-hidden

@@ -448,7 +448,7 @@ export async function OwnerDashboard({
 
         <div className="grid xl:grid-cols-2 xl:divide-x xl:divide-ink-200">
           <div>
-            <p className="px-5 pb-2 pt-4 text-[13px] font-semibold text-ink-700">
+            <p className="px-5 pb-2 pt-4 text-body font-semibold text-ink-700">
               Нөөц багассан бараа
             </p>
             <Table>
@@ -495,7 +495,7 @@ export async function OwnerDashboard({
           </div>
 
           <div>
-            <p className="px-5 pb-2 pt-4 text-[13px] font-semibold text-ink-700">
+            <p className="px-5 pb-2 pt-4 text-body font-semibold text-ink-700">
               Сүүлийн тооллогын зөрүү
               {data.lastCount ? (
                 <Link
@@ -569,7 +569,7 @@ export async function OwnerDashboard({
                     <TableLink href={`/materials/${row.id}`} strong>
                       {row.name}
                     </TableLink>
-                    <span className="flex shrink-0 items-center gap-2 text-[13px]">
+                    <span className="flex shrink-0 items-center gap-2 text-body">
                       <span className="tabular text-ink-400">
                         {formatMoney(row.previousCost)} → {formatMoney(row.latestCost)}
                       </span>

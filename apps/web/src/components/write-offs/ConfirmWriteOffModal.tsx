@@ -64,7 +64,7 @@ export function ConfirmWriteOffModal({
     >
       <div className="space-y-4">
         {documentNo ? (
-          <div className="tabular text-[15px] font-semibold text-ink-900">{documentNo}</div>
+          <div className="tabular text-title font-semibold text-ink-900">{documentNo}</div>
         ) : null}
 
         <dl className="grid grid-cols-[auto_minmax(0,1fr)] gap-x-4 gap-y-1.5 text-sm">
@@ -97,12 +97,12 @@ export function ConfirmWriteOffModal({
 
         <div className="flex items-baseline justify-between border-t border-ink-200 pt-3">
           <span className="text-sm text-ink-500">Нийт өртөг</span>
-          <span className="tabular text-[19px] font-semibold text-ink-900">
+          <span className="tabular text-figure font-semibold text-ink-900">
             {formatMoney(totalCost)}
           </span>
         </div>
 
-        <div className="flex gap-2.5 rounded-card border border-amber-200 bg-amber-50 p-3 text-[13px] leading-5 text-amber-900">
+        <div className="flex gap-2.5 rounded-card border border-amber-200 bg-amber-50 p-3 text-body leading-5 text-amber-900">
           <AlertTriangle aria-hidden className="mt-0.5 h-4 w-4 shrink-0" />
           <span>
             Эдгээр бараа агуулахын үлдэгдлээс хасагдана. Баталсны дараа АКТ-ыг засах боломжгүй.

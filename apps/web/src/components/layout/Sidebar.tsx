@@ -31,7 +31,7 @@ export function Sidebar({
       {groups.map((group, index) => (
         <div key={group.label ?? index}>
           {group.label ? (
-            <p className="mb-1.5 px-3 text-[11px] font-semibold uppercase tracking-wider text-ink-400">
+            <p className="mb-1.5 px-3 text-meta font-semibold uppercase tracking-wider text-ink-400">
               {group.label}
             </p>
           ) : null}

@@ -61,7 +61,7 @@ export function BarChart({
 
       <div className="mt-2 flex gap-1.5 border-t border-ink-200 pt-2 sm:gap-3">
         {data.map((item) => (
-          <div key={item.label} className="min-w-0 flex-1 text-center text-[11px] text-ink-500">
+          <div key={item.label} className="min-w-0 flex-1 text-center text-meta text-ink-500">
             {item.label}
           </div>
         ))}

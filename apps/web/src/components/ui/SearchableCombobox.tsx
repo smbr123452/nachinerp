@@ -311,12 +311,12 @@ export function SearchableCombobox({
             className="scrollbar-slim max-h-64 overflow-y-auto overscroll-contain py-1"
           >
             {filtered.length === 0 ? (
-              <p className="px-3 py-6 text-center text-[13px] text-ink-500">{emptyMessage}</p>
+              <p className="px-3 py-6 text-center text-body text-ink-500">{emptyMessage}</p>
             ) : (
               groups.map(([groupName, groupOptions]) => (
                 <div key={groupName || "__ungrouped"}>
                   {groupName ? (
-                    <p className="px-3 pb-1 pt-2 text-[11px] font-semibold uppercase tracking-wider text-ink-400">
+                    <p className="px-3 pb-1 pt-2 text-meta font-semibold uppercase tracking-wider text-ink-400">
                       {groupName}
                     </p>
                   ) : null}
@@ -343,18 +343,18 @@ export function SearchableCombobox({
                         <span className="min-w-0 flex-1">
                           <span className="block truncate text-ink-900">{option.label}</span>
                           {option.secondary ? (
-                            <span className="block truncate text-[12px] text-ink-500">
+                            <span className="block truncate text-caption text-ink-500">
                               {option.secondary}
                             </span>
                           ) : null}
                         </span>
                         {option.meta ? (
-                          <span className="tabular shrink-0 whitespace-nowrap text-[12px] text-ink-500">
+                          <span className="tabular shrink-0 whitespace-nowrap text-caption text-ink-500">
                             {option.meta}
                           </span>
                         ) : null}
                         {option.badge ? (
-                          <span className="shrink-0 whitespace-nowrap rounded bg-ink-100 px-1.5 py-0.5 text-[11px] text-ink-600">
+                          <span className="shrink-0 whitespace-nowrap rounded bg-ink-100 px-1.5 py-0.5 text-meta text-ink-600">
                             {option.badge}
                           </span>
                         ) : null}

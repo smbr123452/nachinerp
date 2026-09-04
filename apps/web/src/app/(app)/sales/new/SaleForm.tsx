@@ -315,7 +315,7 @@ export function SaleForm({
                 onChange={(event) => setAllowNegative(event.target.checked)}
               />
               {allowNegative ? (
-                <p className="rounded-md bg-white/70 px-2.5 py-2 text-[13px] font-medium leading-5 text-red-800">
+                <p className="rounded-md bg-white/70 px-2.5 py-2 text-body font-medium leading-5 text-red-800">
                   Эзний зөвшөөрлөөр сөрөг үлдэгдэл үүснэ. Энэ зөвшөөрөл зөвхөн ЭНЭ борлуулалтад
                   үйлчилнэ — системийн тохиргоо өөрчлөгдөхгүй.
                 </p>
@@ -353,7 +353,7 @@ export function SaleForm({
           </div>
 
           <div className="mt-4 flex flex-wrap items-center justify-between gap-3 rounded-lg border border-ink-200 bg-ink-50 px-4 py-3">
-            <dl className="flex flex-wrap gap-x-8 gap-y-2 text-[13px]">
+            <dl className="flex flex-wrap gap-x-8 gap-y-2 text-body">
               <div>
                 <dt className="text-ink-500">Нийт орлого</dt>
                 <dd className="tabular font-semibold text-ink-900">{formatMoney(total)}</dd>
@@ -456,7 +456,7 @@ export function SaleForm({
           {shortages.map((line) => (
             <li key={line.key} className="px-3 py-2 text-sm">
               <div className="font-medium text-ink-900">{line.name}</div>
-              <dl className="mt-1 grid grid-cols-3 gap-2 text-[12px] text-ink-500">
+              <dl className="mt-1 grid grid-cols-3 gap-2 text-caption text-ink-500">
                 <div>
                   <dt>Одоо</dt>
                   <dd className="tabular text-ink-700">

@@ -46,10 +46,10 @@ export default async function LoginPage() {
         <SiriusAurumLockup size="lg" tone="onBrand" className="relative" />
 
         <div className="relative max-w-md">
-          <h1 className="text-[30px] font-semibold leading-10 tracking-[-0.01em]">
+          <h1 className="text-display font-semibold leading-10 tracking-[-0.01em]">
             Өдөр тутмын үйл ажиллагаагаа нэг дороос удирдана
           </h1>
-          <p className="mt-3 text-[15px] leading-6 text-brand-100">
+          <p className="mt-3 text-title leading-6 text-brand-100">
             Борлуулалт, нөөц, худалдан авалт, зардал, мөнгөн гүйлгээ — бүгд нэг системд,
             бодит өртгийн тооцоотойгоор.
           </p>
@@ -62,7 +62,7 @@ export default async function LoginPage() {
                 </span>
                 <span>
                   <span className="block text-sm font-semibold leading-5">{item.title}</span>
-                  <span className="mt-0.5 block text-[13px] leading-5 text-brand-100">
+                  <span className="mt-0.5 block text-body leading-5 text-brand-100">
                     {item.description}
                   </span>
                 </span>
@@ -86,7 +86,7 @@ export default async function LoginPage() {
           <div className="rounded-card border border-ink-200 bg-white p-6 shadow-card sm:p-7">
             <div className="mb-6">
               <h2 className="text-lg font-semibold text-ink-900">Системд нэвтрэх</h2>
-              <p className="mt-1 text-[13px] text-ink-500">
+              <p className="mt-1 text-body text-ink-500">
                 Ажлын и-мэйл хаяг болон нууц үгээ оруулна уу.
               </p>
             </div>

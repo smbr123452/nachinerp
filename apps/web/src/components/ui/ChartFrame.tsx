@@ -14,7 +14,7 @@ export function ChartLegend({
   return (
     <ul className={cn("flex flex-wrap items-center gap-x-5 gap-y-1.5", className)}>
       {items.map((item) => (
-        <li key={item.label} className="flex items-center gap-2 text-[13px]">
+        <li key={item.label} className="flex items-center gap-2 text-body">
           <span
             aria-hidden
             className="h-2.5 w-2.5 shrink-0 rounded-[3px]"
@@ -50,10 +50,10 @@ export function ChartTooltip({
       className="pointer-events-none absolute z-10 w-40 rounded-lg border border-ink-200 bg-white px-3 py-2 shadow-pop"
       style={{ left: flip ? x - 168 : x + 12, top: Math.max(y - 12, 0) }}
     >
-      <p className="mb-1 text-[11px] font-semibold uppercase tracking-wide text-ink-400">{title}</p>
+      <p className="mb-1 text-meta font-semibold uppercase tracking-wide text-ink-400">{title}</p>
       <ul className="space-y-0.5">
         {rows.map((row) => (
-          <li key={row.label} className="flex items-center justify-between gap-3 text-[12px]">
+          <li key={row.label} className="flex items-center justify-between gap-3 text-caption">
             <span className="flex min-w-0 items-center gap-1.5 text-ink-600">
               {row.color ? (
                 <span

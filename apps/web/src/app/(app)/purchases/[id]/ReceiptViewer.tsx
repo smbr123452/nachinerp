@@ -33,7 +33,7 @@ export function ReceiptViewer({ attachments }: { attachments: ReceiptView[] }) {
   const [zoomed, setZoomed] = useState<ReceiptView | null>(null);
 
   if (attachments.length === 0) {
-    return <p className="text-[13px] text-ink-500">Баримтын зураг хавсаргаагүй.</p>;
+    return <p className="text-body text-ink-500">Баримтын зураг хавсаргаагүй.</p>;
   }
 
   return (
@@ -54,7 +54,7 @@ export function ReceiptViewer({ attachments }: { attachments: ReceiptView[] }) {
                 alt={attachment.originalFileName}
                 className="h-28 w-28 rounded-lg border border-ink-200 object-cover transition-colors group-hover:border-brand-400"
               />
-              <span className="mt-1 block max-w-28 truncate text-[13px] text-ink-500">
+              <span className="mt-1 block max-w-28 truncate text-body text-ink-500">
                 {formatSize(attachment.fileSize)}
               </span>
             </button>
@@ -62,7 +62,7 @@ export function ReceiptViewer({ attachments }: { attachments: ReceiptView[] }) {
             <a
               key={attachment.id}
               href={`/api/attachments/${attachment.id}`}
-              className="flex h-28 w-28 flex-col items-center justify-center gap-1.5 rounded-lg border border-ink-200 text-[13px] text-ink-600 transition-colors hover:border-brand-400 hover:bg-brand-50"
+              className="flex h-28 w-28 flex-col items-center justify-center gap-1.5 rounded-lg border border-ink-200 text-body text-ink-600 transition-colors hover:border-brand-400 hover:bg-brand-50"
             >
               <FileText aria-hidden className="h-6 w-6 text-ink-400" />
               <span className="max-w-24 truncate px-1">{attachment.originalFileName}</span>

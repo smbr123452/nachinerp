@@ -65,7 +65,7 @@ export async function ManagerMoneyView({ filters }: { filters: LedgerFilters }) 
         <Card className="xl:col-span-2">
           <CardBody className="flex flex-wrap items-center justify-between gap-4">
             <div className="min-w-0">
-              <p className="text-[13px] font-medium text-ink-500">Банканд тушаах мөнгө</p>
+              <p className="text-body font-medium text-ink-500">Банканд тушаах мөнгө</p>
               <p className="tabular mt-1 text-kpi font-semibold text-ink-900">
                 {formatMoney(data.pendingDeposit)}
               </p>

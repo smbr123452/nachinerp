@@ -84,7 +84,7 @@ export default async function SuppliersPage({ searchParams }: { searchParams: Se
         </Table>
       </Card>
 
-      <p className="mt-4 text-[13px] text-ink-500">
+      <p className="mt-4 text-body text-ink-500">
         Нийлүүлэгч дээр дарж дэлгэрэнгүй, эндээс авдаг бараа болон сүүлийн авсан үнийг харна.{" "}
         <Link href="/purchases/new" className="text-brand-600 underline-offset-4 hover:underline">
           Шинэ худалдан авалт бүртгэх

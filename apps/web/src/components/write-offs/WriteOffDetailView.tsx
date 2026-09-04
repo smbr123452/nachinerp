@@ -95,7 +95,7 @@ export async function WriteOffDetailView({
         <Alert tone="warning" title="Энэ акт буцаагдсан">
           {act.reversedBy?.name ?? "—"} · {formatDateTime(act.reversedAt)}
           {act.reversalNote ? ` · ${act.reversalNote}` : ""}
-          <div className="mt-1 text-[13px]">
+          <div className="mt-1 text-body">
             Хасагдсан бараа нөөцөд буцаан сэргээгдсэн. Эх хөдөлгөөн болон энэ баримт түүхэнд
             хэвээр үлдэнэ.
           </div>
@@ -141,7 +141,7 @@ export async function WriteOffDetailView({
               ) : null}
             </Table>
             {isDraft ? (
-              <div className="border-t border-ink-200 px-4 py-3 text-[13px] leading-5 text-ink-500">
+              <div className="border-t border-ink-200 px-4 py-3 text-body leading-5 text-ink-500">
                 Өртөг нь батлах үед тухайн агшны жигнэсэн дундаж өртгөөр царцана. Тиймээс ноорог
                 үед дүн харагдахгүй.
               </div>
@@ -171,7 +171,7 @@ export async function WriteOffDetailView({
                 <dt className="text-ink-500">Бүртгэсэн</dt>
                 <dd className="text-ink-800">
                   {act.createdBy.name}
-                  <span className="block text-[12px] text-ink-500">
+                  <span className="block text-caption text-ink-500">
                     {formatDateTime(act.createdAt)}
                   </span>
                 </dd>
@@ -180,7 +180,7 @@ export async function WriteOffDetailView({
                     <dt className="text-ink-500">Баталсан</dt>
                     <dd className="text-ink-800">
                       {act.postedBy?.name ?? "—"}
-                      <span className="block text-[12px] text-ink-500">
+                      <span className="block text-caption text-ink-500">
                         {formatDateTime(act.postedAt)}
                       </span>
                     </dd>

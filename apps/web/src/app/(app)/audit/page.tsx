@@ -99,7 +99,7 @@ export default async function AuditPage({ searchParams }: { searchParams: Search
                     {log.oldValue || log.newValue ? (
                       <details className="text-xs">
                         <summary className="cursor-pointer text-brand-600">Харах</summary>
-                        <pre className="mt-2 max-w-md overflow-x-auto rounded bg-ink-50 p-2 text-[11px] text-ink-600">
+                        <pre className="mt-2 max-w-md overflow-x-auto rounded bg-ink-50 p-2 text-meta text-ink-600">
                           {JSON.stringify({ өмнө: log.oldValue, дараа: log.newValue }, null, 2)}
                         </pre>
                       </details>

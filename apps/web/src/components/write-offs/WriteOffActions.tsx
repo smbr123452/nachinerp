@@ -80,7 +80,7 @@ export function WriteOffActions({
             {error ? <Alert tone="error">{error.message}</Alert> : null}
             {success ? <Alert tone="success">{success.message}</Alert> : null}
 
-            <p className="text-[13px] leading-5 text-ink-500">
+            <p className="text-body leading-5 text-ink-500">
               Энэ акт ноорог байна — нөөцөд хараахан нөлөөлөөгүй. Батласны дараа засах боломжгүй.
             </p>
 
@@ -140,7 +140,7 @@ export function WriteOffActions({
           {status === "POSTED" ? (
             isOwner ? (
               <>
-                <p className="text-[13px] leading-5 text-ink-500">
+                <p className="text-body leading-5 text-ink-500">
                   Буцаалт нь эсрэг хөдөлгөөн үүсгэж, барааг эх өртгөөр нь нөөцөд сэргээнэ. Энэ
                   баримт устахгүй.
                 </p>
@@ -156,12 +156,12 @@ export function WriteOffActions({
                 </Button>
               </>
             ) : (
-              <p className="text-[13px] leading-5 text-ink-500">
+              <p className="text-body leading-5 text-ink-500">
                 Батлагдсан актыг зөвхөн байгууллагын эзэн буцаана.
               </p>
             )
           ) : (
-            <p className="text-[13px] leading-5 text-ink-500">
+            <p className="text-body leading-5 text-ink-500">
               Энэ акт буцаагдсан. Нэмэлт үйлдэл байхгүй.
             </p>
           )}

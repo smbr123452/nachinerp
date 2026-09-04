@@ -124,17 +124,17 @@ export default async function SupplierDetailPage({ params }: { params: Params })
 
       <div className="mb-6 flex flex-wrap items-center gap-x-6 gap-y-2 rounded-card border border-ink-200 bg-white px-4 py-3 shadow-card">
         <ActiveBadge active={supplier.isActive} />
-        <span className="text-[13px] text-ink-500">
+        <span className="text-body text-ink-500">
           Холбогдсон бараа: <span className="tabular font-medium text-ink-900">{items.length}</span>
         </span>
-        <span className="text-[13px] text-ink-500">
+        <span className="text-body text-ink-500">
           Батлагдсан худалдан авалт:{" "}
           <span className="tabular font-medium text-ink-900">
             {usage.find((u) => u.label === "худалдан авалт")?.count ?? 0}
           </span>
         </span>
         {supplier.note ? (
-          <span className="min-w-0 text-[13px] text-ink-500">Тэмдэглэл: {supplier.note}</span>
+          <span className="min-w-0 text-body text-ink-500">Тэмдэглэл: {supplier.note}</span>
         ) : null}
       </div>
 
@@ -150,7 +150,7 @@ export default async function SupplierDetailPage({ params }: { params: Params })
           description="Зээлээр авсан, төлөгдөөгүй үлдэгдэлтэй худалдан авалтууд."
         />
         <CardBody className="border-b border-ink-200">
-          <dl className="grid grid-cols-2 gap-x-4 gap-y-3 text-[13px] sm:grid-cols-4">
+          <dl className="grid grid-cols-2 gap-x-4 gap-y-3 text-body sm:grid-cols-4">
             <div>
               <dt className="text-ink-500">Нийт өглөг</dt>
               <dd className="tabular text-base font-semibold text-ink-900">

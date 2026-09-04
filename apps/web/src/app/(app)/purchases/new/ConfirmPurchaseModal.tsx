@@ -123,7 +123,7 @@ export function ConfirmPurchaseModal({
       size="lg"
     >
       <div className="space-y-5">
-        <dl className="grid grid-cols-2 gap-x-4 gap-y-2 text-[13px] sm:grid-cols-4">
+        <dl className="grid grid-cols-2 gap-x-4 gap-y-2 text-body sm:grid-cols-4">
           <div>
             <dt className="text-ink-500">Огноо</dt>
             <dd className="font-medium text-ink-900">{dateLabel}</dd>
@@ -167,7 +167,7 @@ export function ConfirmPurchaseModal({
               ))}
               <TotalRow>
                 <Td colSpan={3}>Нийт төлөх дүн</Td>
-                <Td align="right" className="text-[15px]">
+                <Td align="right" className="text-title">
                   {formatMoney(total)}
                 </Td>
               </TotalRow>
@@ -181,7 +181,7 @@ export function ConfirmPurchaseModal({
         {credit ? (
           <div className="rounded-lg border border-amber-200 bg-amber-50/60 p-4">
             <p className="text-sm font-medium text-ink-900">Зээлийн нөхцөл</p>
-            <dl className="mt-2 grid grid-cols-2 gap-x-4 gap-y-2 text-[13px] sm:grid-cols-4">
+            <dl className="mt-2 grid grid-cols-2 gap-x-4 gap-y-2 text-body sm:grid-cols-4">
               <div>
                 <dt className="text-ink-500">Төлбөрийн нөхцөл</dt>
                 <dd className="font-medium text-ink-900">{paymentLabel}</dd>
@@ -199,7 +199,7 @@ export function ConfirmPurchaseModal({
                 <dd className="font-medium text-ink-900">{credit.dueDate ?? "Тодорхойгүй"}</dd>
               </div>
             </dl>
-            <p className="mt-2 text-[13px] text-ink-600">
+            <p className="mt-2 text-body text-ink-600">
               Одоо мөнгө гарахгүй. Төлбөрийг дараа нь худалдан авалтын хуудаснаас
               бүртгэнэ.
             </p>
@@ -237,8 +237,8 @@ export function ConfirmPurchaseModal({
                 className="h-16 w-16 shrink-0 rounded-md border border-ink-200 object-cover"
               />
               <div className="min-w-0 flex-1">
-                <p className="truncate text-[13px] font-medium text-ink-900">{file.name}</p>
-                <p className="text-[13px] text-ink-500">{(file.size / 1024).toFixed(0)} KB</p>
+                <p className="truncate text-body font-medium text-ink-900">{file.name}</p>
+                <p className="text-body text-ink-500">{(file.size / 1024).toFixed(0)} KB</p>
               </div>
               <Button variant="secondary" size="sm" onClick={openPicker} disabled={pending}>
                 Солих
@@ -261,7 +261,7 @@ export function ConfirmPurchaseModal({
               disabled={pending}
               className={
                 "flex w-full cursor-pointer items-center gap-2 rounded-lg border border-dashed " +
-                "border-ink-300 bg-white px-3 py-2.5 text-left text-[13px] text-ink-600 " +
+                "border-ink-300 bg-white px-3 py-2.5 text-left text-body text-ink-600 " +
                 "transition-colors hover:border-brand-400 hover:bg-brand-50 " +
                 "disabled:cursor-not-allowed disabled:opacity-60"
               }

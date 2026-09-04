@@ -209,7 +209,7 @@ export function WriteOffForm({
                   </div>
 
                   {candidate ? (
-                    <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-[12px] text-ink-500">
+                    <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-caption text-ink-500">
                       <span>
                         Үлдэгдэл:{" "}
                         <span className="tabular text-ink-700">
@@ -253,10 +253,10 @@ export function WriteOffForm({
           <CardBody className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
             <div className="text-sm">
               <div className="text-ink-500">Нийт</div>
-              <div className="tabular text-[19px] font-semibold text-ink-900">
+              <div className="tabular text-figure font-semibold text-ink-900">
                 {formatMoney(totalCost)}
               </div>
-              <div className="tabular text-[12px] text-ink-500">
+              <div className="tabular text-caption text-ink-500">
                 {lines.length} төрөл · {formatQty(totalQuantity)} нэгж
               </div>
             </div>

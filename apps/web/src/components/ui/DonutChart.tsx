@@ -102,7 +102,7 @@ export function DonutChart({ slices }: { slices: DonutSlice[] }) {
         {slices.map((slice) => (
           <li
             key={slice.key}
-            className="flex items-center justify-between gap-3 text-[13px]"
+            className="flex items-center justify-between gap-3 text-body"
             onMouseEnter={() => setActive(slice.key)}
             onMouseLeave={() => setActive(null)}
           >

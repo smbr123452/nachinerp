@@ -31,14 +31,14 @@ export function HorizontalBarChart({ rows }: { rows: HorizontalBarRow[] }) {
               {row.href ? (
                 <Link
                   href={row.href}
-                  className="truncate text-[13px] font-medium text-ink-700 transition-colors hover:text-brand-700 hover:underline"
+                  className="truncate text-body font-medium text-ink-700 transition-colors hover:text-brand-700 hover:underline"
                 >
                   {row.label}
                 </Link>
               ) : (
-                <span className="truncate text-[13px] font-medium text-ink-700">{row.label}</span>
+                <span className="truncate text-body font-medium text-ink-700">{row.label}</span>
               )}
-              <span className="tabular shrink-0 text-[13px] font-semibold text-ink-900">
+              <span className="tabular shrink-0 text-body font-semibold text-ink-900">
                 {row.display}
               </span>
             </div>

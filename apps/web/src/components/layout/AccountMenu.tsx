@@ -76,10 +76,10 @@ export function AccountMenu({
           {initials}
         </span>
         <span className="min-w-0 flex-1">
-          <span className="block truncate text-[13px] font-medium leading-5 text-ink-800">
+          <span className="block truncate text-body font-medium leading-5 text-ink-800">
             {userName}
           </span>
-          <span className="block text-[11px] leading-4 text-ink-500">{roleLabel}</span>
+          <span className="block text-meta leading-4 text-ink-500">{roleLabel}</span>
         </span>
         <ChevronsUpDown aria-hidden className="h-4 w-4 shrink-0 text-ink-400" />
       </button>

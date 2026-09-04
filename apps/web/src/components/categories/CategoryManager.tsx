@@ -77,7 +77,7 @@ function CategoryManagerBody({
 
       <div className="divide-y divide-ink-200 rounded-lg border border-ink-200">
         {categories.length === 0 ? (
-          <p className="px-4 py-6 text-center text-[13px] text-ink-500">
+          <p className="px-4 py-6 text-center text-body text-ink-500">
             Ангилал бүртгэгдээгүй байна.
           </p>
         ) : (
@@ -188,7 +188,7 @@ function CategoryLine({
               {category.name}
             </span>
             <ActiveBadge active={category.isActive} />
-            <span className="text-[13px] tabular-nums text-ink-500">
+            <span className="text-body tabular-nums text-ink-500">
               {category.usageCount} бичлэг
             </span>
             <div className="flex flex-wrap gap-1">

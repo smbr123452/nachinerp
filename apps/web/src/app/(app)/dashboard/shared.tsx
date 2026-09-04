@@ -10,7 +10,7 @@ export function MoreLink({ href, children = "Бүгд" }: { href: string; childr
   return (
     <Link
       href={href}
-      className="inline-flex items-center gap-1 text-[13px] font-medium text-brand-600 transition-colors hover:text-brand-700"
+      className="inline-flex items-center gap-1 text-body font-medium text-brand-600 transition-colors hover:text-brand-700"
     >
       {children}
       <ArrowRight aria-hidden className="h-3.5 w-3.5" />

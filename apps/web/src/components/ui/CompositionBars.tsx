@@ -29,14 +29,14 @@ export function CompositionBars({ rows }: { rows: CompositionRow[] }) {
           <li key={row.key}>
             <div className="mb-1.5 flex items-baseline justify-between gap-3">
               <span className="flex min-w-0 items-baseline gap-2">
-                <span className="truncate text-[13px] font-medium text-ink-700">{row.label}</span>
+                <span className="truncate text-body font-medium text-ink-700">{row.label}</span>
                 {row.note ? (
-                  <span className="shrink-0 text-[11px] text-ink-400">{row.note}</span>
+                  <span className="shrink-0 text-meta text-ink-400">{row.note}</span>
                 ) : null}
               </span>
               <span
                 className={cn(
-                  "tabular shrink-0 text-[13px] font-semibold",
+                  "tabular shrink-0 text-body font-semibold",
                   negative ? "text-red-700" : "text-ink-900",
                 )}
               >

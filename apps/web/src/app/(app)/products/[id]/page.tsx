@@ -131,20 +131,20 @@ export default async function ProductDetailPage({ params }: { params: Params }) 
           Тус бүрийг том хайрцаг болгохгүй — нэг эгнээнд товч харуулна. */}
       {isResale ? (
         <div className="mb-6 flex flex-wrap items-center gap-x-6 gap-y-2 rounded-card border border-ink-200 bg-white px-4 py-3 shadow-card">
-          <span className="text-[13px] text-ink-500">
+          <span className="text-body text-ink-500">
             Үлдэгдэл:{" "}
             <span className={cn("tabular font-medium", isLowStock ? "text-red-600" : "text-ink-900")}>
               {formatQty(product.quantity)} {unitLabel(product.unit)}
             </span>
           </span>
-          <span className="text-[13px] text-ink-500">
+          <span className="text-body text-ink-500">
             Сүүлийн авсан үнэ:{" "}
             <span className="tabular font-medium text-ink-900">
               {lastPurchase ? formatMoneyPrecise(lastPurchase.baseUnitCost) : "—"}
             </span>
           </span>
           {lastPurchase ? (
-            <span className="text-[13px] text-ink-500">
+            <span className="text-body text-ink-500">
               Сүүлийн худалдан авалт:{" "}
               <TableLink href={`/purchases/${lastPurchase.purchaseId}`}>
                 {lastPurchase.purchaseNo}
@@ -152,7 +152,7 @@ export default async function ProductDetailPage({ params }: { params: Params }) 
               · {formatDate(lastPurchase.date)} · {lastPurchase.supplierName}
             </span>
           ) : (
-            <span className="text-[13px] text-ink-500">Худалдан авалтын түүх алга байна.</span>
+            <span className="text-body text-ink-500">Худалдан авалтын түүх алга байна.</span>
           )}
         </div>
       ) : null}

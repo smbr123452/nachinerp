@@ -36,7 +36,7 @@ export function Field({
   const messages = Array.isArray(error) ? error : error ? [error] : [];
   return (
     <div className={cn("min-w-0 space-y-1.5", className)}>
-      <label htmlFor={htmlFor} className="block text-[13px] font-medium leading-5 text-ink-700">
+      <label htmlFor={htmlFor} className="block text-body font-medium leading-5 text-ink-700">
         {label}
         {required ? (
           <span aria-hidden className="ml-0.5 text-red-500">
@@ -133,8 +133,8 @@ export function FormSection({
     <section className={cn("space-y-3", className)}>
       {title ? (
         <div>
-          <h3 className="text-[13px] font-semibold uppercase tracking-wide text-ink-500">{title}</h3>
-          {description ? <p className="mt-0.5 text-[13px] text-ink-500">{description}</p> : null}
+          <h3 className="text-body font-semibold uppercase tracking-wide text-ink-500">{title}</h3>
+          {description ? <p className="mt-0.5 text-body text-ink-500">{description}</p> : null}
         </div>
       ) : null}
       {children}

@@ -62,7 +62,7 @@ export function PayablePanel({
       />
 
       <div className="px-5 py-4">
-        <dl className="grid grid-cols-2 gap-x-4 gap-y-3 text-[13px] sm:grid-cols-5">
+        <dl className="grid grid-cols-2 gap-x-4 gap-y-3 text-body sm:grid-cols-5">
           <div>
             <dt className="text-ink-500">Нийт өглөг</dt>
             <dd className="tabular font-medium text-ink-900">
@@ -96,7 +96,7 @@ export function PayablePanel({
         </dl>
 
         {payable.note ? (
-          <p className="mt-3 text-[13px] text-ink-600">{payable.note}</p>
+          <p className="mt-3 text-body text-ink-600">{payable.note}</p>
         ) : null}
 
         {payable.cancelled ? (
@@ -140,7 +140,7 @@ export function PayablePanel({
                 <Td className="text-ink-500">{payment.createdByName}</Td>
                 <Td>
                   {payment.status === "REVERSED" ? (
-                    <span className="text-[13px] text-ink-500">
+                    <span className="text-body text-ink-500">
                       Буцаагдсан
                       {payment.reversedByName ? ` · ${payment.reversedByName}` : ""}
                       {payment.reversedAtLabel ? ` · ${payment.reversedAtLabel}` : ""}
@@ -170,7 +170,7 @@ export function PayablePanel({
           </tbody>
         </Table>
       ) : (
-        <p className="border-t border-ink-200 px-5 py-4 text-[13px] text-ink-500">
+        <p className="border-t border-ink-200 px-5 py-4 text-body text-ink-500">
           Төлбөр хараахан бүртгэгдээгүй.
         </p>
       )}

@@ -107,7 +107,7 @@ export function CountCreateForm({ materials, today }: { materials: CountMaterial
       </Card>
 
       <div className="flex flex-wrap items-center justify-between gap-3 rounded-card border border-brand-200 bg-brand-50/50 px-5 py-4 shadow-card">
-        <p className="text-[13px] text-ink-600">
+        <p className="text-body text-ink-600">
           Сонгосон материалын системийн үлдэгдэл тухайн үедээ хадгалагдана.
         </p>
         <SubmitButton size="lg" disabled={selected.size === 0} pendingText="Үүсгэж байна...">

@@ -66,7 +66,7 @@ export function SupplierItems({
       <div className="flex flex-wrap items-center justify-between gap-3 border-b border-ink-200 px-5 py-4">
         <div className="min-w-0">
           <h3 className="text-base font-semibold leading-6 text-ink-900">Авагддаг бараа</h3>
-          <p className="mt-1 text-[13px] leading-5 text-ink-500">
+          <p className="mt-1 text-body leading-5 text-ink-500">
             Энэ нийлүүлэгчээс ихэвчлэн авдаг бараа. Үнэ нь батлагдсан худалдан авалтын
             түүхээс гарна — энд үнэ хадгалахгүй.
           </p>
@@ -103,7 +103,7 @@ export function SupplierItems({
               <Tr key={item.id}>
                 <Td>
                   <span className="font-medium text-ink-900">{item.name}</span>
-                  <span className="ml-2 text-[13px] text-ink-500">{item.sku}</span>
+                  <span className="ml-2 text-body text-ink-500">{item.sku}</span>
                   {!item.isActive ? (
                     <Badge tone="neutral" className="ml-2">
                       Идэвхгүй

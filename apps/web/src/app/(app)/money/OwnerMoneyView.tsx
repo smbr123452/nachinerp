@@ -35,17 +35,17 @@ function FlowSummary({
   const negative = net.trim().startsWith("-");
   return (
     <div className="rounded-lg border border-ink-200 bg-white p-4">
-      <p className="text-[13px] font-medium text-ink-500">{title}</p>
+      <p className="text-body font-medium text-ink-500">{title}</p>
       <dl className="mt-2.5 space-y-1.5">
-        <div className="flex items-baseline justify-between gap-3 text-[13px]">
+        <div className="flex items-baseline justify-between gap-3 text-body">
           <dt className="text-ink-500">Орлого</dt>
           <dd className="tabular font-medium text-emerald-700">{inflow}</dd>
         </div>
-        <div className="flex items-baseline justify-between gap-3 text-[13px]">
+        <div className="flex items-baseline justify-between gap-3 text-body">
           <dt className="text-ink-500">Зарлага</dt>
           <dd className="tabular font-medium text-red-700">{outflow}</dd>
         </div>
-        <div className="flex items-baseline justify-between gap-3 border-t border-ink-100 pt-1.5 text-[13px]">
+        <div className="flex items-baseline justify-between gap-3 border-t border-ink-100 pt-1.5 text-body">
           <dt className="font-medium text-ink-700">Цэвэр урсгал</dt>
           <dd className={`tabular font-semibold ${negative ? "text-red-700" : "text-ink-900"}`}>
             {net}
@@ -257,7 +257,7 @@ export async function OwnerMoneyView({
         <Card className="xl:col-span-2">
           <CardBody className="flex flex-wrap items-center justify-between gap-4">
             <div className="min-w-0">
-              <p className="text-[13px] font-medium text-ink-500">Банканд тушаах мөнгө</p>
+              <p className="text-body font-medium text-ink-500">Банканд тушаах мөнгө</p>
               <p className="tabular mt-1 text-kpi font-semibold text-ink-900">
                 {formatMoney(data.balances.pendingDeposit)}
               </p>
@@ -303,7 +303,7 @@ export async function OwnerMoneyView({
           title="Мөнгөн гүйлгээний дэвтэр"
           description={`Шүүлтэд ${data.ledgerTotals.count} гүйлгээ · сүүлийн ${data.ledger.length} харагдана`}
           action={
-            <div className="flex flex-wrap items-center gap-4 text-[13px]">
+            <div className="flex flex-wrap items-center gap-4 text-body">
               <span className="flex items-center gap-1.5">
                 <TrendingUp aria-hidden className="h-3.5 w-3.5 text-emerald-600" />
                 <span className="tabular font-medium text-emerald-700">
@@ -322,7 +322,7 @@ export async function OwnerMoneyView({
         <LedgerTable rows={data.ledger} emptyText="Шүүлтэд тохирох гүйлгээ олдсонгүй." />
         {data.ledgerTotals.count > data.ledger.length ? (
           <CardBody className="border-t border-ink-200">
-            <p className="flex items-center gap-2 text-[13px] text-ink-500">
+            <p className="flex items-center gap-2 text-body text-ink-500">
               <Info aria-hidden className="h-4 w-4 shrink-0 text-ink-400" />
               Шүүлтэд {data.ledgerTotals.count} гүйлгээ байгаагаас сүүлийн {data.ledger.length}-г
               харуулав. Бүрэн жагсаалтыг огнооны шүүлтүүрээр нарийсгана уу.

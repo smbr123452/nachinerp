@@ -86,7 +86,7 @@ export function Modal({
               <div className="min-w-0">
                 <h3 className="text-base font-semibold leading-6 text-ink-900">{title}</h3>
                 {description ? (
-                  <p className="mt-1 text-[13px] leading-5 text-ink-500">{description}</p>
+                  <p className="mt-1 text-body leading-5 text-ink-500">{description}</p>
                 ) : null}
               </div>
             </div>

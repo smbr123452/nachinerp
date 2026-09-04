@@ -38,7 +38,7 @@ function useQueryUpdater() {
   return { params, update, pending };
 }
 
-const LABEL = "mb-1.5 block text-[13px] font-medium leading-5 text-ink-700";
+const LABEL = "mb-1.5 block text-body font-medium leading-5 text-ink-700";
 
 export function SearchInput({
   paramKey = "q",

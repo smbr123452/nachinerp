@@ -44,8 +44,8 @@ export function CardHeader({
       )}
     >
       <div className="min-w-0">
-        <h2 className="text-[15px] font-semibold leading-6 text-ink-900">{title}</h2>
-        {description ? <p className="mt-0.5 text-[13px] text-ink-500">{description}</p> : null}
+        <h2 className="text-title font-semibold leading-6 text-ink-900">{title}</h2>
+        {description ? <p className="mt-0.5 text-body text-ink-500">{description}</p> : null}
       </div>
       {action ? <div className="no-print flex shrink-0 items-center gap-2">{action}</div> : null}
     </div>

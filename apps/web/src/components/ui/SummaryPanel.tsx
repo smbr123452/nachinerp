@@ -45,7 +45,7 @@ export function SummaryPanel({
       <div className="flex flex-wrap items-end justify-between gap-x-8 gap-y-4">
         <div className="min-w-0 space-y-1.5">
           {lines?.map((line) => (
-            <div key={line.label} className="flex items-baseline gap-3 text-[13px]">
+            <div key={line.label} className="flex items-baseline gap-3 text-body">
               <span className="text-ink-500">{line.label}</span>
               <span className={cn("tabular font-medium", TONE[line.tone ?? "default"])}>
                 {line.value}
@@ -53,7 +53,7 @@ export function SummaryPanel({
             </div>
           ))}
           <div className="flex items-baseline gap-3 pt-0.5">
-            <span className="text-[13px] font-medium text-ink-600">{totalLabel}</span>
+            <span className="text-body font-medium text-ink-600">{totalLabel}</span>
             <span
               className={cn(
                 "tabular text-kpi-sm font-semibold",

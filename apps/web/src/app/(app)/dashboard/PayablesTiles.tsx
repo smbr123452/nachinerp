@@ -54,7 +54,7 @@ export async function PayablesTiles() {
           title="Ойрын төлөлтүүд"
           description="Хугацаа хэтэрсэн нь эхэлж харагдана."
           action={
-            <Link href="/money" className="text-[13px] font-medium text-brand-600 hover:underline">
+            <Link href="/money" className="text-body font-medium text-brand-600 hover:underline">
               Бүгдийг харах
             </Link>
           }

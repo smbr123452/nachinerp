@@ -339,8 +339,8 @@ export function PurchaseForm({
               оронд нь нийлүүлэгчид өглөг үүснэ. */}
           {isCredit ? (
             <div className="mt-4 rounded-lg border border-amber-200 bg-amber-50/60 p-4">
-              <p className="text-[13px] font-medium text-ink-900">Зээлийн нөхцөл</p>
-              <p className="mt-0.5 text-[13px] text-ink-600">
+              <p className="text-body font-medium text-ink-900">Зээлийн нөхцөл</p>
+              <p className="mt-0.5 text-body text-ink-600">
                 Мөнгө одоо гарахгүй. Нийлүүлэгчид өглөг үүсэж, дараа нь хэсэгчлэн
                 эсвэл бүтнээр төлнө.
               </p>
@@ -382,7 +382,7 @@ export function PurchaseForm({
           />
           <CardBody className="space-y-4">
             {loadingSuggestions ? (
-              <p className="text-[13px] text-ink-500">Ачаалж байна...</p>
+              <p className="text-body text-ink-500">Ачаалж байна...</p>
             ) : (
               <>
                 {/* Гараар холбосон бараа — "эндээс авдаг" гэсэн хэвшил. */}
@@ -517,7 +517,7 @@ export function PurchaseForm({
             })}
             <TotalRow>
               <Td colSpan={4}>Нийт дүн</Td>
-              <Td align="right" className="text-[15px]">
+              <Td align="right" className="text-title">
                 {formatMoney(total)}
               </Td>
               <Td />
@@ -621,9 +621,9 @@ function SuggestionGroup({
 }) {
   return (
     <div>
-      <p className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-ink-500">{label}</p>
+      <p className="mb-2 text-meta font-semibold uppercase tracking-wide text-ink-500">{label}</p>
       {chips.length === 0 ? (
-        emptyText ? <p className="text-[13px] text-ink-500">{emptyText}</p> : null
+        emptyText ? <p className="text-body text-ink-500">{emptyText}</p> : null
       ) : (
         <div className="flex flex-wrap gap-2">
           {chips.map((chip) => {
@@ -635,7 +635,7 @@ function SuggestionGroup({
                 disabled={added}
                 onClick={() => onAdd(chip)}
                 className={cn(
-                  "rounded-lg border px-3 py-2 text-left text-[13px] transition-colors",
+                  "rounded-lg border px-3 py-2 text-left text-body transition-colors",
                   added
                     ? "cursor-not-allowed border-ink-200 bg-ink-50 text-ink-400"
                     : "border-ink-300 bg-white text-ink-700 hover:border-brand-400 hover:bg-brand-50",
